@@ -38,6 +38,7 @@ def pytest_sessionfinish(session, exitstatus):  # noqa: ANN001
         rows.append(
             {
                 "name":    bench.name,
+                "tokens":  bench.extra_info.get("tokens"),
                 "min":     stats.min,
                 "mean":    stats.mean,
                 "median":  stats.median,
@@ -61,18 +62,26 @@ def pytest_sessionfinish(session, exitstatus):  # noqa: ANN001
             return f"{seconds * 1e6:.3f} μs"
         return f"{seconds * 1e9:.3f} ns"
 
-    header = "| Benchmark | min | mean | median | stddev | IQR | ops/s | rounds |"
-    sep    = "| --- | --- | --- | --- | --- | --- | --- | --- |"
+    def _ns_per_token(mean_s: float, tokens: int | None) -> str:
+        if not tokens:
+            return "n/a"
+        return f"{mean_s / tokens * 1e9:.1f} ns"
+
+    header = "| Benchmark | tokens | min | mean | median | stddev | IQR | ops/s | ns/token | rounds |"
+    sep    = "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
     lines  = [header, sep]
     for r in rows:
+        tok_str = f"{r['tokens']:,}" if r["tokens"] else "n/a"
         lines.append(
             f"| `{r['name']}` "
+            f"| {tok_str} "
             f"| {_fmt_time(r['min'])} "
             f"| {_fmt_time(r['mean'])} "
             f"| {_fmt_time(r['median'])} "
             f"| {_fmt_time(r['stddev'])} "
             f"| {_fmt_time(r['iqr'])} "
             f"| {r['ops']:,.0f} "
+            f"| {_ns_per_token(r['mean'], r['tokens'])} "
             f"| {r['rounds']} |"
         )
 

@@ -104,6 +104,7 @@ def test_encode_cl100k(benchmark, cl100k, label, text):
     result = benchmark(cl100k.encode, text)
     assert isinstance(result, list)
     assert len(result) > 0
+    benchmark.extra_info["tokens"] = len(result)
 
 
 # ---------------------------------------------------------------------------
@@ -117,6 +118,7 @@ def test_decode_cl100k(benchmark, cl100k, label, tokens, expected):
 
     Token lists are pre-encoded at module import so only decode time is measured.
     """
+    benchmark.extra_info["tokens"] = len(tokens)
     result = benchmark(cl100k.decode, tokens)
     assert result == expected
 
@@ -132,6 +134,7 @@ def test_decode_o200k(benchmark, o200k, label, tokens, expected):
 
     Token lists are pre-encoded at module import so only decode time is measured.
     """
+    benchmark.extra_info["tokens"] = len(tokens)
     result = benchmark(o200k.decode, tokens)
     assert result == expected
 
@@ -144,6 +147,7 @@ def test_decode_o200k(benchmark, o200k, label, tokens, expected):
 @pytest.mark.parametrize("label,text", TEXT_PARAMS)
 def test_roundtrip_cl100k(benchmark, cl100k, label, text):
     """Benchmark encode → decode roundtrip for cl100k_base."""
+    benchmark.extra_info["tokens"] = len(_CL100K_TOKENS[label])
 
     def roundtrip(t):
         return cl100k.decode(cl100k.encode(t))
@@ -162,6 +166,7 @@ def test_count_cl100k(benchmark, cl100k, label, text):
     """Benchmark token counting for cl100k_base. count() must agree with len(encode())."""
     count = benchmark(cl100k.count, text)
     assert count == len(cl100k.encode(text))
+    benchmark.extra_info["tokens"] = count
 
 
 # ---------------------------------------------------------------------------
@@ -171,11 +176,14 @@ def test_count_cl100k(benchmark, cl100k, label, text):
 
 @pytest.mark.parametrize("label,text", TEXT_PARAMS)
 def test_count_till_limit_cl100k(benchmark, cl100k, label, text):
-    """Benchmark count_till_limit for a limit of 50 tokens."""
-    limit = 50
+    """Benchmark count_till_limit for a limit of 50 tokens.
 
+    Stops as soon as 50 tokens are found, so tokens processed = min(total, 50).
+    """
+    limit = 50
+    benchmark.extra_info["tokens"] = min(len(_CL100K_TOKENS[label]), limit)
     result = benchmark(cl100k.count_till_limit, text, limit)
-    # Result is either a char position (int) or None if text fits within limit
+    # Result is a char position (int) when limit exceeded, or None if text fits
     assert result is None or isinstance(result, int)
 
 
@@ -203,6 +211,7 @@ def test_encode_batch_cl100k(benchmark, cl100k, label, batch):
     tokens_list, total_tokens, _elapsed = benchmark(cl100k.encode_batch, batch)
     assert total_tokens > 0
     assert len(tokens_list) == len(batch)
+    benchmark.extra_info["tokens"] = total_tokens
 
 
 # ---------------------------------------------------------------------------
@@ -216,11 +225,13 @@ def test_encode_o200k(benchmark, o200k, label, text):
     result = benchmark(o200k.encode, text)
     assert isinstance(result, list)
     assert len(result) > 0
+    benchmark.extra_info["tokens"] = len(result)
 
 
 @pytest.mark.parametrize("label,text", TEXT_PARAMS)
 def test_roundtrip_o200k(benchmark, o200k, label, text):
     """Benchmark encode → decode roundtrip for o200k_base."""
+    benchmark.extra_info["tokens"] = len(_O200K_TOKENS[label])
 
     def roundtrip(t):
         return o200k.decode(o200k.encode(t))
