@@ -161,6 +161,15 @@ typeCheckingMode = "basic"
 reportMissingImports = true
 reportMissingTypeStubs = false
 
+[tool.pytest.ini_options]
+addopts = [
+    "--benchmark-sort=mean",
+    "--benchmark-columns=min,mean,stddev,median,iqr,ops,rounds",
+    "--benchmark-warmup=on",
+    "--benchmark-min-rounds=5",
+    "--benchmark-timer=time.perf_counter",
+]
+
 [project.optional-dependencies]
 dev = [
     "maturin>=1.8.3",
