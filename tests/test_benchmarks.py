@@ -65,19 +65,32 @@ def o200k():
     return openai.o200k_base()
 
 
-@pytest.fixture(scope="module")
-def cl100k_tokens_small(cl100k):
-    return cl100k.encode(SMALL_TEXT)
+# Pre-encoded token sequences used by decode benchmarks.
+# Computed once at module import so decode timings exclude encoding overhead.
+_TEXT_MAP: dict[str, str] = {
+    "small":  SMALL_TEXT,
+    "medium": MEDIUM_TEXT,
+    "large":  LARGE_TEXT,
+}
+
+def _precompute_tokens(
+    tokenizer_factory,
+) -> dict[str, list[int]]:
+    tok = tokenizer_factory()
+    return {label: tok.encode(text) for label, text in _TEXT_MAP.items()}
 
 
-@pytest.fixture(scope="module")
-def cl100k_tokens_medium(cl100k):
-    return cl100k.encode(MEDIUM_TEXT)
+_CL100K_TOKENS: dict[str, list[int]] = _precompute_tokens(openai.cl100k_base)
+_O200K_TOKENS:  dict[str, list[int]] = _precompute_tokens(openai.o200k_base)
 
-
-@pytest.fixture(scope="module")
-def cl100k_tokens_large(cl100k):
-    return cl100k.encode(LARGE_TEXT)
+DECODE_PARAMS_CL100K = [
+    pytest.param(label, _CL100K_TOKENS[label], _TEXT_MAP[label], id=label)
+    for label in ("small", "medium", "large")
+]
+DECODE_PARAMS_O200K = [
+    pytest.param(label, _O200K_TOKENS[label], _TEXT_MAP[label], id=label)
+    for label in ("small", "medium", "large")
+]
 
 
 # ---------------------------------------------------------------------------
@@ -98,22 +111,29 @@ def test_encode_cl100k(benchmark, cl100k, label, text):
 # ---------------------------------------------------------------------------
 
 
-def test_decode_cl100k_small(benchmark, cl100k, cl100k_tokens_small):
-    """Benchmark decoding of a small token sequence with cl100k_base."""
-    result = benchmark(cl100k.decode, cl100k_tokens_small)
-    assert result == SMALL_TEXT
+@pytest.mark.parametrize("label,tokens,expected", DECODE_PARAMS_CL100K)
+def test_decode_cl100k(benchmark, cl100k, label, tokens, expected):
+    """Benchmark decoding for cl100k_base across text sizes.
+
+    Token lists are pre-encoded at module import so only decode time is measured.
+    """
+    result = benchmark(cl100k.decode, tokens)
+    assert result == expected
 
 
-def test_decode_cl100k_medium(benchmark, cl100k, cl100k_tokens_medium):
-    """Benchmark decoding of a medium token sequence with cl100k_base."""
-    result = benchmark(cl100k.decode, cl100k_tokens_medium)
-    assert result == MEDIUM_TEXT
+# ---------------------------------------------------------------------------
+# Decoding benchmarks – o200k_base
+# ---------------------------------------------------------------------------
 
 
-def test_decode_cl100k_large(benchmark, cl100k, cl100k_tokens_large):
-    """Benchmark decoding of a large token sequence with cl100k_base."""
-    result = benchmark(cl100k.decode, cl100k_tokens_large)
-    assert result == LARGE_TEXT
+@pytest.mark.parametrize("label,tokens,expected", DECODE_PARAMS_O200K)
+def test_decode_o200k(benchmark, o200k, label, tokens, expected):
+    """Benchmark decoding for o200k_base across text sizes.
+
+    Token lists are pre-encoded at module import so only decode time is measured.
+    """
+    result = benchmark(o200k.decode, tokens)
+    assert result == expected
 
 
 # ---------------------------------------------------------------------------
