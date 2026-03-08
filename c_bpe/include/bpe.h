@@ -69,6 +69,24 @@ BytePairEncoding *bpe_from_dictionary(const uint8_t *all_tokens,
                                       uint32_t        num_tokens,
                                       uint64_t        hash_factor);
 
+/**
+ * Build a BytePairEncoding from a pre-computed binary blob.
+ *
+ * The blob layout is produced by codegen/gen_precomputed.c and contains
+ * all computed data structures (split tables, hash maps, AC automata).
+ * Token dictionary data (all_tokens, token_starts) comes separately
+ * from the dict_*.h headers.
+ *
+ * All data is copied into freshly allocated memory; the caller must
+ * call bpe_free() to release.
+ */
+BytePairEncoding *bpe_from_blob(
+    const uint8_t  *all_tokens,
+    const uint32_t *token_starts,
+    const uint8_t  *blob,
+    size_t          blob_len
+);
+
 void bpe_free(BytePairEncoding *bpe);
 
 /* =========================================================================

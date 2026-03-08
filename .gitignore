@@ -37,6 +37,11 @@ __pycache__
 *.dll
 *.dylib
 
+# Precomputed BPE blobs (copied/decompressed at build/runtime from data/*.bin.gz)
+c_bpe/python/c_bpe/*.bin
+c_bpe/python/c_bpe/*.bin.gz
+c_bpe/src/precomputed_*
+
 # Python build artifacts
 __pycache__/
 *.py[cod]

@@ -117,6 +117,13 @@ uint32_t *bpe_encode_all_prefixes(const BytePairEncoding *bpe,
 uint8_t *bpe_decode_tokens(const BytePairEncoding *bpe,
                            const uint32_t *tokens, size_t ntokens,
                            size_t *out_len) {
+    /* Validate all token IDs before accessing arrays */
+    for (size_t i = 0; i < ntokens; i++) {
+        if (tokens[i] >= bpe->num_tokens) {
+            if (out_len) *out_len = 0;
+            return NULL;
+        }
+    }
     size_t total = 0;
     for (size_t i = 0; i < ntokens; i++) total += token_len(bpe, tokens[i]);
     uint8_t *buf = (uint8_t *)malloc(total + 1);
@@ -688,4 +695,99 @@ void bpe_free(BytePairEncoding *bpe) {
     ac_automaton_free(bpe->overlapping_searcher_rev);
     free(bpe->next_prefix_match);
     free(bpe);
+}
+
+/* =========================================================================
+ * Construction: from pre-computed binary blob
+ *
+ * The blob layout (little-endian) matches gen_precomputed.c output:
+ *   Header:  num_tokens(u32), hash_factor(u64),
+ *            bm_cap(u32), bm_count(u32), pm_cap(u32), pm_count(u32),
+ *            3x automaton headers: da_size(i32), noutputs(i32), kind(i32)
+ *   Arrays:  split_left[nt], split_right[nt], next_prefix_match[nt],
+ *            BytesMapSlots[bm_cap], PairMapSlots[pm_cap],
+ *            3x automaton data: cells, outputs, da_base, da_check
+ * ========================================================================= */
+
+BytePairEncoding *bpe_from_blob(
+    const uint8_t  *all_tokens,
+    const uint32_t *token_starts,
+    const uint8_t  *blob,
+    size_t          blob_len)
+{
+    const uint8_t *p = blob;
+
+    /* ---- Read header scalars ---- */
+    uint32_t num_tokens;     memcpy(&num_tokens,  p, 4); p += 4;
+    uint64_t hash_factor;    memcpy(&hash_factor,  p, 8); p += 8;
+    uint32_t bm_cap;         memcpy(&bm_cap,       p, 4); p += 4;
+    uint32_t bm_count;       memcpy(&bm_count,     p, 4); p += 4;
+    uint32_t pm_cap;         memcpy(&pm_cap,       p, 4); p += 4;
+    uint32_t pm_count;       memcpy(&pm_count,     p, 4); p += 4;
+
+    int32_t ac_da_size[3], ac_noutputs[3], ac_kind[3];
+    for (int i = 0; i < 3; i++) {
+        memcpy(&ac_da_size[i],  p, 4); p += 4;
+        memcpy(&ac_noutputs[i], p, 4); p += 4;
+        memcpy(&ac_kind[i],     p, 4); p += 4;
+    }
+
+    /* ---- Allocate BPE ---- */
+    BytePairEncoding *bpe = (BytePairEncoding *)calloc(1, sizeof(BytePairEncoding));
+    bpe->num_tokens  = num_tokens;
+    bpe->hash_factor = hash_factor;
+
+    /* Token data — copy so bpe_free works uniformly */
+    uint32_t total_bytes = token_starts[num_tokens];
+    bpe->all_tokens   = (uint8_t *)malloc(total_bytes);
+    bpe->token_starts = (uint32_t *)malloc((num_tokens + 1) * sizeof(uint32_t));
+    memcpy(bpe->all_tokens,   all_tokens,   total_bytes);
+    memcpy(bpe->token_starts, token_starts, (num_tokens + 1) * sizeof(uint32_t));
+
+    /* ---- Bulk-copy arrays from blob ---- */
+#define BLOB_COPY(dst, type, count) do {                          \
+        size_t sz = (size_t)(count) * sizeof(type);               \
+        (dst) = (type *)malloc(sz);                               \
+        memcpy((dst), p, sz);                                     \
+        p += sz;                                                  \
+    } while (0)
+
+    BLOB_COPY(bpe->split_left,        uint32_t, num_tokens);
+    BLOB_COPY(bpe->split_right,       uint32_t, num_tokens);
+    BLOB_COPY(bpe->next_prefix_match, uint32_t, num_tokens);
+
+    /* BytesMap */
+    bpe->hash_to_token.capacity = bm_cap;
+    bpe->hash_to_token.count    = bm_count;
+    BLOB_COPY(bpe->hash_to_token.slots, BytesMapSlot, bm_cap);
+
+    /* PairMap */
+    bpe->pair_lookup.capacity = pm_cap;
+    bpe->pair_lookup.count    = pm_count;
+    BLOB_COPY(bpe->pair_lookup.slots, PairMapSlot, pm_cap);
+
+    /* ---- 3 AC automatons ---- */
+    AcAutomaton **ac_ptrs[3] = {
+        &bpe->longest_searcher,
+        &bpe->overlapping_searcher,
+        &bpe->overlapping_searcher_rev,
+    };
+    for (int i = 0; i < 3; i++) {
+        AcAutomaton *a = (AcAutomaton *)calloc(1, sizeof(AcAutomaton));
+        a->kind     = (AcKind)ac_kind[i];
+        a->ncells   = ac_da_size[i];
+        a->da_size  = ac_da_size[i];
+        a->noutputs = ac_noutputs[i];
+
+        BLOB_COPY(a->cells,    AcCell,   ac_da_size[i]);
+        BLOB_COPY(a->outputs,  AcOutput, ac_noutputs[i]);
+        BLOB_COPY(a->da_base,  int32_t,  ac_da_size[i]);
+        BLOB_COPY(a->da_check, int32_t,  ac_da_size[i]);
+
+        *ac_ptrs[i] = a;
+    }
+#undef BLOB_COPY
+
+    (void)blob_len; /* could assert p - blob == blob_len */
+    return bpe;
 }

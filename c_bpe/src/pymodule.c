@@ -44,6 +44,54 @@ static double monotonic_secs(void) {
 #include "dict_cl100k.h"
 #include "dict_o200k.h"
 
+/* ---------------------------------------------------------------------------
+ * Load precomputed binary blob from disk.
+ * Returns malloc'd buffer on success (caller must free), NULL on failure.
+ * Sets *out_len to the file size.
+ * --------------------------------------------------------------------------- */
+static unsigned char *load_blob_file(const char *filename, size_t *out_len) {
+    /* Get this module's __file__ to find the package directory */
+    PyObject *mod = PyImport_ImportModule("c_bpe");
+    if (!mod) { PyErr_Clear(); return NULL; }
+    PyObject *file_attr = PyObject_GetAttrString(mod, "__file__");
+    Py_DECREF(mod);
+    if (!file_attr) { PyErr_Clear(); return NULL; }
+
+    const char *init_path = PyUnicode_AsUTF8(file_attr);
+    if (!init_path) { Py_DECREF(file_attr); PyErr_Clear(); return NULL; }
+
+    /* Build path: dirname(__file__) / filename */
+    char path[4096];
+    size_t plen = strlen(init_path);
+    /* Find last separator */
+    size_t sep = plen;
+    while (sep > 0 && init_path[sep - 1] != '/' && init_path[sep - 1] != '\\') sep--;
+    if (sep + strlen(filename) + 1 >= sizeof(path)) {
+        Py_DECREF(file_attr);
+        return NULL;
+    }
+    memcpy(path, init_path, sep);
+    strcpy(path + sep, filename);
+    Py_DECREF(file_attr);
+
+    /* Read the file */
+    FILE *f = fopen(path, "rb");
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END);
+    long fsize = ftell(f);
+    if (fsize <= 0) { fclose(f); return NULL; }
+    fseek(f, 0, SEEK_SET);
+
+    unsigned char *buf = (unsigned char *)malloc((size_t)fsize);
+    if (!buf) { fclose(f); return NULL; }
+    size_t rd = fread(buf, 1, (size_t)fsize, f);
+    fclose(f);
+    if (rd != (size_t)fsize) { free(buf); return NULL; }
+
+    *out_len = (size_t)fsize;
+    return buf;
+}
+
 /* Parallel batch functions from parallel.c */
 extern int  parallel_num_threads(void);
 extern void parallel_encode_batch(const Tokenizer *tok,
@@ -82,19 +130,33 @@ static const char *O200K_PATTERNS[] = {
 static const bool O200K_LOOKAHEADS[] = { false, true, false };
 
 static Tokenizer *build_cl100k(void) {
-    BytePairEncoding *bpe = bpe_from_dictionary(CL100K_ALL_TOKENS,
-                                                 CL100K_TOKEN_STARTS,
-                                                 CL100K_NUM_TOKENS,
-                                                 CL100K_HASH_FACTOR);
+    size_t blob_len = 0;
+    unsigned char *blob = load_blob_file("precomputed_cl100k.bin", &blob_len);
+    BytePairEncoding *bpe;
+    if (blob) {
+        bpe = bpe_from_blob(CL100K_ALL_TOKENS, CL100K_TOKEN_STARTS,
+                            blob, blob_len);
+        free(blob);
+    } else {
+        bpe = bpe_from_dictionary(CL100K_ALL_TOKENS, CL100K_TOKEN_STARTS,
+                                  CL100K_NUM_TOKENS, CL100K_HASH_FACTOR);
+    }
     Tokenizer *tok = tokenizer_new_native(bpe, pretok_cl100k);
     return tok;
 }
 
 static Tokenizer *build_o200k(void) {
-    BytePairEncoding *bpe = bpe_from_dictionary(O200K_ALL_TOKENS,
-                                                 O200K_TOKEN_STARTS,
-                                                 O200K_NUM_TOKENS,
-                                                 O200K_HASH_FACTOR);
+    size_t blob_len = 0;
+    unsigned char *blob = load_blob_file("precomputed_o200k.bin", &blob_len);
+    BytePairEncoding *bpe;
+    if (blob) {
+        bpe = bpe_from_blob(O200K_ALL_TOKENS, O200K_TOKEN_STARTS,
+                            blob, blob_len);
+        free(blob);
+    } else {
+        bpe = bpe_from_dictionary(O200K_ALL_TOKENS, O200K_TOKEN_STARTS,
+                                  O200K_NUM_TOKENS, O200K_HASH_FACTOR);
+    }
     Tokenizer *tok = tokenizer_new_native(bpe, pretok_o200k);
     return tok;
 }
@@ -394,6 +456,7 @@ static PyObject *PyTokenizer_decode(PyTokenizer *self, PyObject *args) {
     size_t   out_len;
     uint8_t *buf = bpe_decode_tokens(self->tok->bpe, toks, n, &out_len);
     free(toks);
+    if (!buf) Py_RETURN_NONE;
     /* Attempt UTF-8 decode */
     PyObject *result = PyUnicode_DecodeUTF8((char*)buf, (Py_ssize_t)out_len,
                                              "strict");
@@ -421,10 +484,15 @@ static PyObject *PyTokenizer_decode_batch(PyTokenizer *self, PyObject *args) {
         size_t   out_len;
         uint8_t *buf = bpe_decode_tokens(self->tok->bpe, toks, n, &out_len);
         free(toks);
-        PyObject *s = PyUnicode_DecodeUTF8((char*)buf, (Py_ssize_t)out_len,
-                                            "strict");
-        free(buf);
-        if (!s) { PyErr_Clear(); s = Py_NewRef(Py_None); }
+        PyObject *s;
+        if (!buf) {
+            s = Py_NewRef(Py_None);
+        } else {
+            s = PyUnicode_DecodeUTF8((char*)buf, (Py_ssize_t)out_len,
+                                      "strict");
+            free(buf);
+            if (!s) { PyErr_Clear(); s = Py_NewRef(Py_None); }
+        }
         PyList_SET_ITEM(result, i, s);
     }
     return result;

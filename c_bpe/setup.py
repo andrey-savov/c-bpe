@@ -71,6 +71,26 @@ def run_codegen():
     print("c_bpe: codegen complete.")
 
 
+def copy_precomputed_blobs():
+    """Copy committed .bin.gz blobs into the Python package directory.
+
+    Decompression happens at runtime in Python (see c_bpe/openai.py).
+    """
+    pkg_dir = HERE / "python" / "c_bpe"
+    copied = 0
+    for name in ("precomputed_cl100k.bin.gz", "precomputed_o200k.bin.gz"):
+        src = DATA / name
+        dst = pkg_dir / name
+        if src.exists():
+            shutil.copy2(src, dst)
+            copied += 1
+    if copied:
+        print(f"c_bpe: copied {copied} precomputed blob(s) into package directory.")
+    else:
+        print("c_bpe: no precomputed blobs found in data/, will use runtime init.")
+    return copied > 0
+
+
 # ---------------------------------------------------------------------------
 # PCRE2 UCD tables (Unicode property data only — no regex engine)
 # ---------------------------------------------------------------------------
@@ -86,7 +106,7 @@ def get_pcre2_sources():
     for name in PCRE2_NEEDED_SOURCES:
         p = pcre2_src / name
         if p.exists():
-            sources.append(str(p))
+            sources.append("third_party/pcre2/src/" + name)
     if not sources:
         print(
             "WARNING: PCRE2 UCD sources not found in third_party/pcre2/src/\n"
@@ -103,6 +123,9 @@ class BpeBuildExt(build_ext):
     def build_extension(self, ext):
         # Run codegen first (idempotent)
         run_codegen()
+
+        # Copy precomputed .bin.gz blobs into package dir
+        copy_precomputed_blobs()
 
         compiler = self.compiler
         msvc = is_msvc(compiler)
@@ -136,22 +159,22 @@ class BpeBuildExt(build_ext):
 
 BPE_SOURCES = [
     # fnv_hash.h, bitfield.h, lru_cache.h are header-only (no .c file)
-    str(SRC / "ac_bpe.c"),
-    str(SRC / "bpe_core.c"),
-    str(SRC / "appendable_encoder.c"),
-    str(SRC / "prependable_encoder.c"),
-    str(SRC / "interval_encoding.c"),
-    str(SRC / "tokenizer.c"),
-    str(SRC / "pretok_cl100k.c"),
-    str(SRC / "pretok_o200k.c"),
-    str(SRC / "parallel.c"),
-    str(SRC / "threadpool.c"),
-    str(SRC / "pymodule.c"),
+    "src/ac_bpe.c",
+    "src/bpe_core.c",
+    "src/appendable_encoder.c",
+    "src/prependable_encoder.c",
+    "src/interval_encoding.c",
+    "src/tokenizer.c",
+    "src/pretok_cl100k.c",
+    "src/pretok_o200k.c",
+    "src/parallel.c",
+    "src/threadpool.c",
+    "src/pymodule.c",
 ]
 
 PCRE2_SOURCES = get_pcre2_sources()
 
-INCLUDE_DIRS = [str(INCLUDE), str(SRC)]  # SRC for generated dict headers
+INCLUDE_DIRS = ["include", "src"]  # src for generated dict headers
 
 PCRE2_MACROS = []
 if PCRE2_SOURCES:
@@ -160,8 +183,8 @@ if PCRE2_SOURCES:
         ("PCRE2_STATIC", None),
         ("HAVE_CONFIG_H", None),
     ]
-    INCLUDE_DIRS.append(str(THIRD_PARTY / "pcre2" / "src"))
-    INCLUDE_DIRS.append(str(THIRD_PARTY / "pcre2"))
+    INCLUDE_DIRS.append("third_party/pcre2/src")
+    INCLUDE_DIRS.append("third_party/pcre2")
 
 ext = Extension(
     name="c_bpe.bpe",
