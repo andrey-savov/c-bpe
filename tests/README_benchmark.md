@@ -22,9 +22,15 @@ pytest tests/test_benchmarks.py --benchmark-disable
 
 ## Results
 
-A Markdown report is auto-generated at **`tests/bench_results.md`** after every
-benchmark run (handled by the `conftest.py` session-finish hook). The report
-contains per-implementation tables and a head-to-head comparison of median times.
+A Markdown report is auto-generated after every benchmark run (handled by the
+`conftest.py` session-finish hook) into a platform-specific file:
+
+- **`tests/bench_results_windows.md`** — Windows
+- **`tests/bench_results_linux.md`** — Linux / WSL
+- **`tests/bench_results_darwin.md`** — macOS
+
+The report contains per-implementation tables and a head-to-head comparison of
+median times.
 
 ## Prerequisites
 

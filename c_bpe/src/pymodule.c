@@ -447,7 +447,7 @@ static PyObject *PyTokenizer_encode_batch_parallel(PyTokenizer *self, PyObject *
     }
     free(texts); free(text_lens); free(out_toks); free(out_ns);
 
-    return Py_BuildValue("(Ondl)", result_list, (Py_ssize_t)total, elapsed,
+    return Py_BuildValue("(Nndl)", result_list, (Py_ssize_t)total, elapsed,
                          (long)parallel_num_threads());
 }
 

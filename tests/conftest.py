@@ -4,7 +4,8 @@ Test configuration and fixtures for the combined rs_bpe / c_bpe benchmark suite.
 Benchmark markdown export
 -------------------------
 After any run that includes benchmark tests, a Markdown report is written to
-``tests/bench_results.md`` automatically.  No extra flags are needed::
+a platform-specific file (e.g. ``tests/bench_results_windows.md`` or
+``tests/bench_results_linux.md``) automatically.  No extra flags are needed::
 
     pytest tests/test_benchmarks.py --benchmark-only
 
@@ -15,6 +16,7 @@ The report contains:
 
 from __future__ import annotations
 
+import platform
 import re
 from pathlib import Path
 
@@ -171,7 +173,8 @@ def pytest_sessionfinish(session, exitstatus):  # noqa: ANN001
         sections += _comparison_table("rs_bpe", rs_by_base, "c_bpe", c_by_base)
         sections.append("")
 
-    out = Path("tests/bench_results.md")
+    plat = platform.system().lower()  # 'windows', 'linux', 'darwin'
+    out = Path(f"tests/bench_results_{plat}.md")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(sections), encoding="utf-8")
     session.config.pluginmanager.get_plugin("terminalreporter").write_line(
