@@ -109,7 +109,7 @@ class BpeBuildExt(build_ext):
 
         # ---- Optimisation flags ----
         if msvc:
-            opt_flags = ["/O2", "/Ox", "/GL", "/DNDEBUG", "/fp:fast"]
+            opt_flags = ["/O2", "/Ox", "/GL", "/DNDEBUG", "/fp:fast", "/std:c11", "/experimental:c11atomics"]
         else:
             opt_flags = ["-O3", "-march=native", "-DNDEBUG", "-ffast-math"]
             # Try LTO
