@@ -104,13 +104,13 @@ typedef struct PairMap {
 } PairMap;
 
 static inline uint32_t pairmap_hash(uint32_t t1, uint32_t t2) {
-    uint64_t h = UINT64_C(0xcbf29ce484222325);
-    /* hash 8 bytes: t1 then t2 */
-    const uint8_t *p = (const uint8_t *)&t1;
-    for (int i = 0; i < 4; i++) { h ^= p[i]; h *= UINT64_C(0x100000001b3); }
-    p = (const uint8_t *)&t2;
-    for (int i = 0; i < 4; i++) { h ^= p[i]; h *= UINT64_C(0x100000001b3); }
-    return (uint32_t)(h >> 32);
+    /* splitmix64 finaliser — faster than byte-by-byte FNV-1a for fixed 8-byte keys */
+    uint64_t key = ((uint64_t)t1 << 32) | t2;
+    key ^= key >> 30;
+    key *= UINT64_C(0xbf58476d1ce4e5b9);
+    key ^= key >> 27;
+    key *= UINT64_C(0x94d049bb133111eb);
+    return (uint32_t)(key >> 32);
 }
 
 static inline PairMap pairmap_new(uint32_t initial_cap) {
