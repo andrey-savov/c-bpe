@@ -1,12 +1,11 @@
-/* ac_bpe.c — Byte-level Aho-Corasick automaton for BPE (CSR trie variant).
+/* ac_bpe.c — Byte-level Aho-Corasick automaton for BPE (double-array variant).
  *
  * Algorithm overview
  * ------------------
  *  Phase 1 (build):   Insert all patterns into a compact linked-edge trie.
- *  Phase 2 (build):   Convert trie edges to CSR (Compressed Sparse Row) layout.
- *  Phase 3 (build):   BFS to compute AC failure links and output chains.
- *  Runtime:           ac_step() follows one byte in O(log K) amortised time
- *                     where K ≤ 256 is the fanout.
+ *  Phase 2 (build):   BFS to compute AC failure links and output chains.
+ *  Phase 3 (build):   Pack trie into double-array for O(1) transitions.
+ *  Runtime:           ac_step() follows one byte in O(1) amortised time.
  *
  * MIT licence – adapted from ac_dat (https://github.com/Izolex/ac_dat).
  */
@@ -140,125 +139,211 @@ void ac_automaton_free(AcAutomaton *a) {
     if (!a) return;
     free(a->cells);
     free(a->outputs);
-    free(a->edge_off);
-    free(a->edge_bytes);
-    free(a->edge_tgt);
+    free(a->da_base);
+    free(a->da_check);
     free(a);
 }
 
-/* Build an AcAutomaton from a TrieBuilder with the given kind.
- * Converts trie edges to CSR format and runs BFS for fail/output links. */
+/* =========================================================================
+ * Trie child lookup (binary search on sorted edges)
+ * ========================================================================= */
+
+static int32_t trie_find_child(TrieBuilder *tb, int32_t node, uint8_t byte) {
+    TrieNode *n = &tb->nodes[node];
+    int32_t lo = 0, hi = (int32_t)n->nedges;
+    while (lo < hi) {
+        int32_t mid = (lo + hi) / 2;
+        if (n->edges[mid].byte == byte) return n->edges[mid].child;
+        if (n->edges[mid].byte < byte) lo = mid + 1;
+        else                            hi = mid;
+    }
+    return -1;
+}
+
+/* =========================================================================
+ * Double-array growth helper
+ * ========================================================================= */
+
+static void da_grow(int32_t **base, int32_t **check, int32_t *cap,
+                    int32_t needed) {
+    if (needed <= *cap) return;
+    int32_t new_cap = *cap;
+    while (new_cap < needed) new_cap *= 2;
+    *base  = (int32_t *)realloc(*base,  new_cap * sizeof(int32_t));
+    *check = (int32_t *)realloc(*check, new_cap * sizeof(int32_t));
+    memset(*base  + *cap, 0,    (size_t)(new_cap - *cap) * sizeof(int32_t));
+    memset(*check + *cap, 0xFF, (size_t)(new_cap - *cap) * sizeof(int32_t));
+    *cap = new_cap;
+}
+
+/* =========================================================================
+ * Build: BFS on trie for fail/output, then pack into double-array
+ * ========================================================================= */
+
 static AcAutomaton *build_automaton_from_trie(TrieBuilder *tb, AcKind kind) {
     int32_t nnodes = tb->count;
-    AcAutomaton *a = (AcAutomaton *)calloc(1, sizeof(AcAutomaton));
-    a->kind   = kind;
-    a->ncells = nnodes;
 
-    /* Allocate cells (one per trie node) */
-    a->cells = (AcCell *)calloc(nnodes, sizeof(AcCell));
-    for (int32_t i = 0; i < nnodes; i++) {
-        a->cells[i].fail   = 0; /* root = 0 */
-        a->cells[i].output = 0;
-        a->cells[i].token  = tb->nodes[i].token;
-        a->cells[i].depth  = 0;
-    }
+    /* ---- Phase 1: BFS on trie for failure links and output chains ---- */
 
-    /* Build CSR edge arrays from trie */
-    int32_t total_edges = 0;
-    a->edge_off = (int32_t *)malloc((nnodes + 1) * sizeof(int32_t));
-    for (int32_t i = 0; i < nnodes; i++) {
-        a->edge_off[i] = total_edges;
-        total_edges += (int32_t)tb->nodes[i].nedges;
-    }
-    a->edge_off[nnodes] = total_edges;
+    int32_t  *trie_fail   = (int32_t  *)calloc(nnodes, sizeof(int32_t));
+    int32_t  *trie_output = (int32_t  *)calloc(nnodes, sizeof(int32_t));
+    uint32_t *trie_depth  = (uint32_t *)calloc(nnodes, sizeof(uint32_t));
 
-    a->edge_bytes = (uint8_t *)malloc(total_edges * sizeof(uint8_t));
-    a->edge_tgt   = (int32_t *)malloc(total_edges * sizeof(int32_t));
+    int32_t  out_cap  = 1024;
+    int32_t  noutputs = 1; /* index 0 = sentinel (end of chain) */
+    AcOutput *outputs = (AcOutput *)calloc(out_cap, sizeof(AcOutput));
 
-    for (int32_t i = 0; i < nnodes; i++) {
-        int32_t off = a->edge_off[i];
-        TrieNode *n = &tb->nodes[i];
-        for (uint32_t j = 0; j < n->nedges; j++) {
-            a->edge_bytes[off + (int32_t)j] = n->edges[j].byte;
-            a->edge_tgt[off + (int32_t)j]   = n->edges[j].child;
-        }
-    }
-
-    /* Output pool; 0 = sentinel */
-    int32_t out_cap = 1024;
-    a->noutputs = 1;
-    a->outputs = (AcOutput *)calloc(out_cap, sizeof(AcOutput));
-
-    /* BFS to compute depth, failure links, and output chains. */
     int32_t *queue = (int32_t *)malloc(nnodes * sizeof(int32_t));
     int32_t  qh = 0, qt = 0;
 
-    /* Seed: root's direct children */
+    /* Seed: root's children (fail → root, depth = 1) */
     {
-        int32_t off = a->edge_off[0];
-        int32_t end = a->edge_off[1];
-        for (int32_t j = off; j < end; j++) {
-            int32_t ci = a->edge_tgt[j];
-            a->cells[ci].fail  = 0;
-            a->cells[ci].depth = 1;
-            queue[qt++] = ci;
+        TrieNode *root = &tb->nodes[0];
+        for (uint32_t j = 0; j < root->nedges; j++) {
+            int32_t ci = root->edges[j].child;
+            trie_fail[ci]  = 0;
+            trie_depth[ci] = 1;
+            queue[qt++]    = ci;
         }
     }
 
     while (qh < qt) {
-        int32_t nd = queue[qh++];
-        uint32_t depth = a->cells[nd].depth;
+        int32_t  nd    = queue[qh++];
+        uint32_t depth = trie_depth[nd];
 
-        /* Output for nd */
-        if (a->cells[nd].token != AC_INVALID_TOKEN) {
-            if (a->noutputs >= out_cap) {
+        /* Compute output chain entry for nd */
+        if (tb->nodes[nd].token != AC_INVALID_TOKEN) {
+            if (noutputs >= out_cap) {
                 out_cap *= 2;
-                a->outputs = (AcOutput *)realloc(a->outputs,
-                                                  out_cap * sizeof(AcOutput));
+                outputs = (AcOutput *)realloc(outputs,
+                                              out_cap * sizeof(AcOutput));
             }
-            int32_t oidx = a->noutputs++;
-            a->outputs[oidx].token        = a->cells[nd].token;
-            a->outputs[oidx].start_offset = depth;
-            a->outputs[oidx].next         = a->cells[a->cells[nd].fail].output;
-            a->cells[nd].output = oidx;
+            int32_t oidx = noutputs++;
+            outputs[oidx].token        = tb->nodes[nd].token;
+            outputs[oidx].start_offset = depth;
+            outputs[oidx].next         = trie_output[trie_fail[nd]];
+            trie_output[nd] = oidx;
         } else {
-            a->cells[nd].output = a->cells[a->cells[nd].fail].output;
+            trie_output[nd] = trie_output[trie_fail[nd]];
         }
 
-        /* Process children */
-        int32_t eoff = a->edge_off[nd];
-        int32_t eend = a->edge_off[nd + 1];
-        for (int32_t j = eoff; j < eend; j++) {
-            uint8_t c  = a->edge_bytes[j];
-            int32_t ci = a->edge_tgt[j];
-            a->cells[ci].depth = depth + 1;
+        /* Process children of nd */
+        TrieNode *n = &tb->nodes[nd];
+        for (uint32_t j = 0; j < n->nedges; j++) {
+            uint8_t c  = n->edges[j].byte;
+            int32_t ci = n->edges[j].child;
+            trie_depth[ci] = depth + 1;
 
-            /* Walk failure chain of nd to find fail for ci */
-            int32_t fs = a->cells[nd].fail;
+            /* Walk failure chain of nd to find fail link for ci */
+            int32_t fs = trie_fail[nd];
             for (;;) {
-                /* Check if fs has a child on byte c */
-                int32_t child = -1;
-                int32_t foff = a->edge_off[fs];
-                int32_t fend = a->edge_off[fs + 1];
-                /* Binary search */
-                int32_t lo2 = foff, hi2 = fend;
-                while (lo2 < hi2) {
-                    int32_t mid = (lo2 + hi2) / 2;
-                    if (a->edge_bytes[mid] == c) { child = a->edge_tgt[mid]; break; }
-                    if (a->edge_bytes[mid] < c) lo2 = mid + 1;
-                    else hi2 = mid;
-                }
-                if (child >= 0 && child != ci) {
-                    fs = child;
-                    break;
-                }
-                if (fs == 0) break; /* root */
-                fs = a->cells[fs].fail;
+                int32_t child = trie_find_child(tb, fs, c);
+                if (child >= 0 && child != ci) { fs = child; break; }
+                if (fs == 0) break;
+                fs = trie_fail[fs];
             }
-            a->cells[ci].fail = fs;
-            queue[qt++] = ci;
+            trie_fail[ci] = fs;
+            queue[qt++]   = ci;
         }
     }
+
+    /* ---- Phase 2: Pack trie into double-array ---- */
+
+    int32_t da_cap = nnodes * 2;
+    if (da_cap < 512) da_cap = 512;
+
+    int32_t *da_base  = (int32_t *)calloc(da_cap, sizeof(int32_t));
+    int32_t *da_check = (int32_t *)malloc(da_cap * sizeof(int32_t));
+    memset(da_check, 0xFF, da_cap * sizeof(int32_t)); /* -1 = empty */
+
+    int32_t *trie_to_da = (int32_t *)malloc(nnodes * sizeof(int32_t));
+    for (int32_t i = 0; i < nnodes; i++) trie_to_da[i] = -1;
+
+    /* Root → DA slot 0 */
+    trie_to_da[0] = 0;
+    da_check[0]   = 0; /* mark occupied */
+
+    int32_t next_base = 1; /* scanning hint for base assignment */
+
+    /* BFS: assign DA slots to all children */
+    qh = qt = 0;
+    queue[qt++] = 0;
+
+    while (qh < qt) {
+        int32_t   tnd = queue[qh++];
+        TrieNode *n   = &tb->nodes[tnd];
+        if (n->nedges == 0) continue; /* leaf, no children */
+
+        int32_t parent_da = trie_to_da[tnd];
+
+        /* Find smallest base b >= next_base s.t. all b + child_byte
+           positions are empty in da_check. */
+        int32_t b;
+        for (b = next_base; ; b++) {
+            da_grow(&da_base, &da_check, &da_cap, b + 256);
+            bool ok = true;
+            for (uint32_t j = 0; j < n->nedges; j++) {
+                if (da_check[b + (int32_t)n->edges[j].byte] != -1) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (ok) break;
+        }
+
+        da_base[parent_da] = b;
+
+        /* Place each child */
+        for (uint32_t j = 0; j < n->nedges; j++) {
+            int32_t slot       = b + (int32_t)n->edges[j].byte;
+            int32_t child_trie = n->edges[j].child;
+            da_check[slot]         = parent_da;
+            trie_to_da[child_trie] = slot;
+            queue[qt++]            = child_trie;
+        }
+
+        /* Advance hint past first occupied slot */
+        while (next_base < da_cap && da_check[next_base] != -1)
+            next_base++;
+    }
+
+    int32_t da_size = da_cap;
+
+    /* ---- Phase 3: Build cells array (indexed by DA slot) ---- */
+
+    AcCell *cells = (AcCell *)calloc(da_size, sizeof(AcCell));
+    for (int32_t i = 0; i < da_size; i++) {
+        cells[i].fail   = 0;
+        cells[i].output = 0;
+        cells[i].token  = AC_INVALID_TOKEN;
+        cells[i].depth  = 0;
+    }
+
+    for (int32_t i = 0; i < nnodes; i++) {
+        int32_t da = trie_to_da[i];
+        assert(da >= 0);
+        cells[da].fail   = trie_to_da[trie_fail[i]];
+        cells[da].output = trie_output[i];
+        cells[da].token  = tb->nodes[i].token;
+        cells[da].depth  = trie_depth[i];
+    }
+
+    /* ---- Assemble automaton ---- */
+
+    AcAutomaton *a = (AcAutomaton *)calloc(1, sizeof(AcAutomaton));
+    a->kind     = kind;
+    a->ncells   = da_size;
+    a->cells    = cells;
+    a->outputs  = outputs;
+    a->noutputs = noutputs;
+    a->da_base  = da_base;
+    a->da_check = da_check;
+    a->da_size  = da_size;
+
+    free(trie_to_da);
+    free(trie_fail);
+    free(trie_output);
+    free(trie_depth);
     free(queue);
     return a;
 }
@@ -276,23 +361,15 @@ void ac_builder_build_two(AcBuilder *b, AcKind kind1, AcKind kind2,
 }
 
 /* =========================================================================
- * Runtime step: binary search on sorted CSR edges
+ * Runtime step: O(1) double-array lookup
  * ========================================================================= */
 
 static inline int32_t ac_step(const AcAutomaton *a, int32_t state,
                                uint8_t byte) {
     for (;;) {
-        int32_t lo = a->edge_off[state];
-        int32_t hi = a->edge_off[state + 1];
-        /* Binary search for byte */
-        while (lo < hi) {
-            int32_t mid = (lo + hi) / 2;
-            uint8_t mb  = a->edge_bytes[mid];
-            if (mb == byte) return a->edge_tgt[mid];
-            if (mb < byte) lo = mid + 1;
-            else           hi = mid;
-        }
-        if (state == 0) return 0; /* root: stay at root */
+        int32_t t = a->da_base[state] + (int32_t)byte;
+        if (a->da_check[t] == state) return t;
+        if (state == 0) return 0;
         state = a->cells[state].fail;
     }
 }

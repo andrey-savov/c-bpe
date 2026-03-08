@@ -75,20 +75,20 @@ typedef struct {
 } AcOutput;
 
 /* -------------------------------------------------------------------------
- * Automaton — uses Compressed Sparse Row (CSR) edge storage.
- *   Transitions for node i are at edge_bytes[edge_off[i]..edge_off[i+1]],
- *   each leading to edge_targets[j] for the corresponding byte.
+ * Automaton — uses Double-Array edge storage for O(1) transitions.
+ *   Transition from state s on byte c:
+ *     t = da_base[s] + c;  valid iff da_check[t] == s.
  * ------------------------------------------------------------------------- */
 typedef struct AcAutomaton {
     AcCell  *cells;
-    int32_t  ncells;       /* number of nodes (trie nodes, root = 0) */
+    int32_t  ncells;       /* number of DA slots allocated */
     AcOutput *outputs;
     int32_t  noutputs;
     AcKind   kind;
-    /* CSR edge storage */
-    int32_t  *edge_off;    /* length ncells+1 */
-    uint8_t  *edge_bytes;  /* sorted byte labels per node */
-    int32_t  *edge_tgt;    /* child node indices, parallel to edge_bytes */
+    /* Double-array edge storage */
+    int32_t  *da_base;     /* da_base[state] + byte → candidate next state */
+    int32_t  *da_check;    /* da_check[t] == state confirms the transition */
+    int32_t   da_size;     /* total DA array size                          */
 } AcAutomaton;
 
 /* -------------------------------------------------------------------------

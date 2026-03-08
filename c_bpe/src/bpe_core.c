@@ -485,6 +485,81 @@ uint32_t *bpe_encode_via_backtracking(const BytePairEncoding *bpe,
 }
 
 /* =========================================================================
+ * Scratch-buffer API (amortise allocations across many encode/count calls)
+ * ========================================================================= */
+
+struct BpeEncScratch {
+    uint32_t *tokens;
+    size_t    token_cap;
+    BitField  bitfield;   /* words pointer reused across calls */
+};
+
+BpeEncScratch *bpe_scratch_new(void) {
+    BpeEncScratch *s = (BpeEncScratch *)calloc(1, sizeof(BpeEncScratch));
+    return s;
+}
+
+void bpe_scratch_free(BpeEncScratch *s) {
+    if (!s) return;
+    free(s->tokens);
+    bitfield_free(&s->bitfield);
+    free(s);
+}
+
+/* Initialise a BtEnc reusing scratch buffers; grows them if needed. */
+static void btenc_init_reuse(BtEnc *e, const BytePairEncoding *bpe,
+                             const uint8_t *text, size_t text_len,
+                             BpeEncScratch *s) {
+    e->bpe      = bpe;
+    e->text     = text;
+    e->text_len = text_len;
+    /* Grow tokens array if needed */
+    size_t need_cap = text_len / 3 + 16;
+    if (need_cap > s->token_cap) {
+        s->token_cap = need_cap;
+        s->tokens = (uint32_t *)realloc(s->tokens,
+                                        s->token_cap * sizeof(uint32_t));
+    }
+    e->tokens      = s->tokens;
+    e->token_cap   = s->token_cap;
+    e->token_count = 0;
+    e->pos         = 0;
+    e->next_token  = bpe_next_match(bpe, text, text_len);
+    /* Grow and reset bitfield */
+    bitfield_reset(&s->bitfield, text_len + 1);
+    e->bitfield = s->bitfield;
+}
+
+/* Write back any grown buffers to scratch after encoding. */
+static void btenc_sync_scratch(BtEnc *e, BpeEncScratch *s) {
+    s->tokens    = e->tokens;
+    s->token_cap = e->token_cap;
+    s->bitfield  = e->bitfield;
+}
+
+const uint32_t *bpe_encode_piece(const BytePairEncoding *bpe,
+                                  const uint8_t *text, size_t text_len,
+                                  BpeEncScratch *s, size_t *out_n) {
+    BtEnc e;
+    btenc_init_reuse(&e, bpe, text, text_len, s);
+    while (btenc_step(&e) != UINT32_MAX) {}
+    *out_n = e.token_count;
+    btenc_sync_scratch(&e, s);
+    return s->tokens;
+}
+
+size_t bpe_count_piece(const BytePairEncoding *bpe,
+                        const uint8_t *text, size_t text_len,
+                        BpeEncScratch *s) {
+    BtEnc e;
+    btenc_init_reuse(&e, bpe, text, text_len, s);
+    while (btenc_step(&e) != UINT32_MAX) {}
+    size_t c = e.token_count;
+    btenc_sync_scratch(&e, s);
+    return c;
+}
+
+/* =========================================================================
  * Self-check (validate that every token encodes to itself)
  * ========================================================================= */
 

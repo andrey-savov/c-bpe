@@ -40,6 +40,7 @@ static double monotonic_secs(void) {
 
 #include "bpe.h"
 #include "tokenizer.h"
+#include "pretok.h"
 
 /* Generated at build time by codegen/gen_dict.py */
 #include "dict_cl100k.h"
@@ -86,17 +87,7 @@ static Tokenizer *build_cl100k(void) {
                                                  CL100K_TOKEN_STARTS,
                                                  CL100K_NUM_TOKENS,
                                                  CL100K_HASH_FACTOR);
-    int    err_code = 0;
-    size_t err_off  = 0;
-    Tokenizer *tok = tokenizer_new_lookahead(bpe, CL100K_PATTERNS,
-                                              CL100K_LOOKAHEADS, 3,
-                                              &err_code, &err_off);
-    if (!tok) {
-        bpe_free(bpe);
-        PyErr_Format(PyExc_RuntimeError,
-                     "Failed to compile cl100k regex (code %d, offset %zu)",
-                     err_code, err_off);
-    }
+    Tokenizer *tok = tokenizer_new_native(bpe, pretok_cl100k);
     return tok;
 }
 
@@ -105,17 +96,7 @@ static Tokenizer *build_o200k(void) {
                                                  O200K_TOKEN_STARTS,
                                                  O200K_NUM_TOKENS,
                                                  O200K_HASH_FACTOR);
-    int    err_code = 0;
-    size_t err_off  = 0;
-    Tokenizer *tok = tokenizer_new_lookahead(bpe, O200K_PATTERNS,
-                                              O200K_LOOKAHEADS, 3,
-                                              &err_code, &err_off);
-    if (!tok) {
-        bpe_free(bpe);
-        PyErr_Format(PyExc_RuntimeError,
-                     "Failed to compile o200k regex (code %d, offset %zu)",
-                     err_code, err_off);
-    }
+    Tokenizer *tok = tokenizer_new_native(bpe, pretok_o200k);
     return tok;
 }
 

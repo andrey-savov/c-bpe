@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* ---- Portable count-trailing/leading zeros --------------------------------
  * MSVC does not have __builtin_ctzll/__builtin_clzll; use intrinsics instead.
@@ -90,4 +91,15 @@ static inline size_t bitfield_predecessor(const BitField *bf, size_t bit) {
 /* In-place initialisation (alias matching bpe_core.c call convention) */
 static inline void bitfield_init(BitField *bf, size_t bits) {
     *bf = bitfield_new(bits);
+}
+
+/* Ensure capacity for `bits` bits, growing if needed; reset all to 1.
+ * Avoids malloc/free when the existing buffer is already large enough. */
+static inline void bitfield_reset(BitField *bf, size_t bits) {
+    size_t need = (bits + 63) / 64;
+    if (need > bf->nwords) {
+        bf->nwords = need;
+        bf->words  = (uint64_t *)realloc(bf->words, need * sizeof(uint64_t));
+    }
+    memset(bf->words, 0xFF, need * sizeof(uint64_t));
 }

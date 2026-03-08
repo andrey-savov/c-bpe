@@ -148,6 +148,35 @@ uint32_t *bpe_encode_via_backtracking(const BytePairEncoding *bpe,
                                       const uint8_t *text, size_t text_len,
                                       size_t *out_n);
 
+/* =========================================================================
+ * Scratch-buffer API  (amortise allocations across many encode/count calls)
+ * ========================================================================= */
+
+/** Opaque scratch buffer for reuse across multiple encode/count calls. */
+typedef struct BpeEncScratch BpeEncScratch;
+
+/** Allocate a new (empty) scratch buffer. */
+BpeEncScratch *bpe_scratch_new(void);
+
+/** Free a scratch buffer. */
+void bpe_scratch_free(BpeEncScratch *s);
+
+/**
+ * Encode a piece using scratch buffers (no per-call malloc/free).
+ * Returns a pointer into the internal scratch token array; the pointer is
+ * valid until the next call on the same scratch.  *out_n receives the count.
+ */
+const uint32_t *bpe_encode_piece(const BytePairEncoding *bpe,
+                                  const uint8_t *text, size_t text_len,
+                                  BpeEncScratch *s, size_t *out_n);
+
+/**
+ * Count tokens for a piece using scratch buffers (no per-call malloc/free).
+ */
+size_t bpe_count_piece(const BytePairEncoding *bpe,
+                        const uint8_t *text, size_t text_len,
+                        BpeEncScratch *s);
+
 /**
  * Encode via bitfield (priority-heap BPE, also exact).
  * Returns heap-allocated token array, length stored in *out_n.

@@ -9,17 +9,23 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "bpe.h"
+#include "pretok.h"
+
+#ifndef C_BPE_NO_PCRE2
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
-#include "bpe.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* =========================================================================
- * Pretokenizer
+ * Pretokenizer (PCRE2-based)
  * ========================================================================= */
+
+#ifndef C_BPE_NO_PCRE2
 
 /* Maximum number of patterns in a pretokenizer */
 #define PRETOK_MAX_PATTERNS 8
@@ -36,13 +42,18 @@ Pretokenizer *pretokenizer_new(const char **patterns, const bool *lookaheads,
                                size_t *error_offset);
 void          pretokenizer_free(Pretokenizer *pre);
 
+#else
+typedef struct Pretokenizer Pretokenizer; /* opaque, unused */
+#endif
+
 /* =========================================================================
  * Tokenizer
  * ========================================================================= */
 
 typedef struct Tokenizer {
     BytePairEncoding *bpe;
-    Pretokenizer     *pre; /* may be NULL */
+    Pretokenizer     *pre;        /* PCRE2-based, may be NULL */
+    pretok_fn         native_pre; /* hand-coded, may be NULL */
 } Tokenizer;
 
 typedef struct {
@@ -58,6 +69,9 @@ Tokenizer *tokenizer_new_lookahead(BytePairEncoding *bpe,
                                    const bool  *lookaheads,
                                    int          npatterns,
                                    int *error_code, size_t *error_offset);
+
+/** Create a tokenizer with a hand-coded (native) pretokenizer function. */
+Tokenizer *tokenizer_new_native(BytePairEncoding *bpe, pretok_fn fn);
 
 void tokenizer_free(Tokenizer *tok);
 
@@ -82,12 +96,15 @@ size_t    tokenizer_count_till_limit(const Tokenizer *tok,
  * ========================================================================= */
 
 typedef struct PretokIter {
-    const Pretokenizer *pre;
+    const Pretokenizer *pre;      /* PCRE2 path (may be NULL) */
+    pretok_fn           native;   /* native path (may be NULL) */
     const uint8_t      *text;
     size_t              text_len;
     int                 pat_idx;
     size_t              offset;    /* next search start */
+#ifndef C_BPE_NO_PCRE2
     pcre2_match_data   *mdata;
+#endif
     /* pending match from previous pattern scan */
     size_t              pending_start;
     size_t              pending_end;

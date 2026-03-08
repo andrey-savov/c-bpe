@@ -193,6 +193,8 @@ BPE_SOURCES = [
     str(SRC / "prependable_encoder.c"),
     str(SRC / "interval_encoding.c"),
     str(SRC / "tokenizer.c"),
+    str(SRC / "pretok_cl100k.c"),
+    str(SRC / "pretok_o200k.c"),
     str(SRC / "parallel.c"),
     str(SRC / "pymodule.c"),
 ]
