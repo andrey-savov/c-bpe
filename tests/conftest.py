@@ -46,9 +46,14 @@ def _split_impl(bench_name: str) -> tuple[str, str]:
     'test_encode_cl100k[rs_bpe-small]' → ('rs_bpe', 'test_encode_cl100k[small]')
     'test_encode_cl100k[small]'        → ('unknown', 'test_encode_cl100k[small]')
     """
+    # 'test_encode_cl100k[rs_bpe-small]' → ('rs_bpe', 'test_encode_cl100k[small]')
     m = re.match(r'^(.*)\[(rs_bpe|c_bpe)-(.*)\]$', bench_name)
     if m:
         return m.group(2), f"{m.group(1)}[{m.group(3)}]"
+    # 'test_import_cl100k[rs_bpe]' → ('rs_bpe', 'test_import_cl100k')
+    m2 = re.match(r'^(.*)\[(rs_bpe|c_bpe)\]$', bench_name)
+    if m2:
+        return m2.group(2), m2.group(1)
     return "unknown", bench_name
 
 

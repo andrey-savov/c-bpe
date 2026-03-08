@@ -10,7 +10,56 @@ Run with:
     pytest tests/test_benchmarks.py --benchmark-only -k rs_bpe   # one impl only
 """
 
+import importlib
+import sys
+
 import pytest
+
+
+# ---------------------------------------------------------------------------
+# Import-time benchmarks — measure module load + tokenizer construction
+# ---------------------------------------------------------------------------
+
+def _fresh_import_and_construct(pkg: str, factory: str):
+    """Import the module from scratch and call the tokenizer factory."""
+    # Remove cached modules so the import is measured from scratch
+    to_remove = [k for k in sys.modules if k.startswith(pkg)]
+    for k in to_remove:
+        del sys.modules[k]
+    mod = importlib.import_module(f"{pkg}.bpe")
+    return getattr(mod.openai, factory)()
+
+
+@pytest.mark.parametrize(
+    "impl,pkg,factory",
+    [
+        pytest.param("rs_bpe", "rs_bpe", "cl100k_base", id="rs_bpe"),
+        pytest.param("c_bpe", "c_bpe", "cl100k_base", id="c_bpe"),
+    ],
+)
+def test_import_cl100k(benchmark, impl, pkg, factory):
+    """Benchmark import + cl100k_base construction time (cold import)."""
+    try:
+        tok = benchmark(_fresh_import_and_construct, pkg, factory)
+        assert tok is not None
+    except ImportError:
+        pytest.skip(f"{impl} not installed")
+
+
+@pytest.mark.parametrize(
+    "impl,pkg,factory",
+    [
+        pytest.param("rs_bpe", "rs_bpe", "o200k_base", id="rs_bpe"),
+        pytest.param("c_bpe", "c_bpe", "o200k_base", id="c_bpe"),
+    ],
+)
+def test_import_o200k(benchmark, impl, pkg, factory):
+    """Benchmark import + o200k_base construction time (cold import)."""
+    try:
+        tok = benchmark(_fresh_import_and_construct, pkg, factory)
+        assert tok is not None
+    except ImportError:
+        pytest.skip(f"{impl} not installed")
 
 
 # ---------------------------------------------------------------------------
