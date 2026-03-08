@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "c_bpe"
+version = "0.1.0"
+description = "Drop-in C implementation of BPE tokenizer (compatible with rs_bpe API)"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: C",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Text Processing",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-benchmark", "mypy", "ruff"]
+bench = ["numpy", "matplotlib", "tiktoken"]
+
+[tool.pytest.ini_options]
+benchmark_sort = "mean"
+benchmark_columns = ["min", "mean", "stddev", "median", "iqr", "ops", "rounds"]
+benchmark_warmup = true
+benchmark_min_rounds = 5
+benchmark_timer = "time.perf_counter"
+
+[tool.setuptools.packages.find]
+where = ["python"]
