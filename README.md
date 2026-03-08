@@ -10,9 +10,9 @@ The main purpose of this library is to provide fast and correct token counting f
 pip install rs-bpe
 ```
 
-*rs_bpe consistently outperforms the latest release of both tiktoken and huggingface's tokenizers (March 18, 2025)*
+*Both rs_bpe (Rust) and c_bpe (C) consistently outperform tiktoken (March 7, 2026)*
 
-![rs_bpe throughput](benchmark/tokenizer_benchmark_results_throughput.svg)
+![rs_bpe and c_bpe throughput vs tiktoken](benchmark/tokenizer_benchmark_results_throughput.svg)
 
 ## Key Features
 
@@ -24,7 +24,7 @@ pip install rs-bpe
 
 These operations are particularly important for LLM applications but are challenging to implement efficiently for BPE tokenization.
 
-## Motivation *(problems rs-bpe aims to solve)*
+## Motivation *(problems this library aims to solve)*
 
 Existing BPE tokenizers often face performance and correctness issues when used for chunking operations:
 
@@ -55,36 +55,71 @@ Our library provides novel algorithms to solve these problems with superior perf
 
 ## Implementation
 
-The rs-bpe library is written in Rust with Python bindings, designed for both speed and correctness. It implements several encoding strategies:
+This repository contains two complementary BPE implementations — **rs_bpe** (Rust) and **c_bpe** (C) — that share the same algorithms and expose the same Python API. Both are fully correct ports of each other; the choice between them is a trade-off between Rust's ownership-based safety and C's predictable ABI and build simplicity.
 
-### Core Algorithm
+### rs_bpe — Rust Implementation
 
-Our novel algorithm achieves O(n) complexity while preserving the exact output of the original BPE algorithm. The key insight is tracking encodings of all text prefixes efficiently using mathematical properties of valid BPE encodings.
+rs_bpe is written in Rust with Python bindings via PyO3.
 
-Instead of storing full token sequences for each prefix, we only need to remember the last token of each prefix. This is possible because:
+#### Core Algorithm
+
+The novel O(n) algorithm preserves the exact output of the original BPE algorithm by tracking encodings of all text prefixes using mathematical properties of valid BPE encodings.
+
+Instead of storing full token sequences for each prefix, only the last token of each prefix needs to be remembered. This is possible because:
 
 1. There exists exactly one valid encoding sequence for any input text
 2. Any substring of a valid encoding sequence is itself a valid encoding sequence
 3. Knowing the last token of a valid encoding sequence uniquely determines the full sequence
 
-The algorithm efficiently determines the correct last token for each prefix by checking token compatibility with the preceding token, leading to a linear-time solution.
+The algorithm determines the correct last token for each prefix by checking token compatibility with the preceding token, yielding a linear-time solution.
 
-### Backtracking Optimization
+#### Backtracking Optimization
 
-For average-case performance improvement, the library implements a backtracking-based algorithm that:
+For average-case improvement, a backtracking-based algorithm:
 
 1. Tries the greedy approach first, using the longest matching token at each step
-2. Backtracks when necessary to ensure valid BPE encoding
-3. Uses a bitfield to make runtime linear in the input length
+2. Backtracks when necessary to produce a valid BPE encoding
+3. Uses a bitfield so worst-case runtime stays linear in input length
 
-### Special Purpose Encoders
+#### Special Purpose Encoders
 
-The library provides specialized encoders for specific use cases:
-
-* **AppendableEncoder**: Maintains token count state while appending text character by character
+* **AppendableEncoder**: O(1) amortised token-count queries while appending text byte by byte
 * **IntervalEncoding**: Preprocesses text once to enable constant-time token counting for any substring
-* **BacktrackEncoder**: Provides the fastest correct implementation for general encoding
-* **OpenAI-compatible Tokenizer**: Implements tiktoken-compatible interface with cl100k and o200k models
+* **BacktrackEncoder**: Fastest correct implementation for general one-shot encoding
+* **OpenAI-compatible Tokenizer**: tiktoken-compatible interface supporting cl100k and o200k models
+
+---
+
+### c_bpe — C Implementation
+
+c_bpe is a hand-written C port of the same algorithms, compiled as a native extension with full LTO (`/GL /LTCG` on MSVC, `-flto` on GCC/Clang).
+
+#### Data Structures
+
+* **`BytePairEncoding` struct**: Stores the concatenated token byte array, per-token start offsets, a `BytesMap` (bytes→token id), `split_left`/`split_right` arrays for token decomposition, a `PairMap` (pair→merged token), three Aho-Corasick automatons, and a `next_prefix_match` table.
+
+* **`PairMap`**: Open-addressing hash table (linear probing, 50% max load) for `(token1, token2) → merged_id` lookups. Uses a splitmix64 finaliser instead of byte-by-byte FNV-1a for the fixed 8-byte key, keeping the merge step cache-friendly.
+
+* **`BytesMap`**: Open-addressing hash table for `bytes → token_id` lookups. Uses FNV-1a hashing identical to Rust's `fnv` crate, ensuring consistent hash values across both implementations.
+
+#### Aho-Corasick Automatons
+
+Three Double-Array Aho-Corasick automatons are built over the token vocabulary at initialisation time:
+
+* **`longest_searcher`** (`AC_KIND_LEFTMOST_LONGEST`): leftmost-longest token match at each position — used for the backtrack encoder.
+* **`overlapping_searcher`** (`AC_KIND_OVERLAPPING_FWD`): all overlapping forward matches — used by `AppendableEncoder` to maintain per-byte AC state.
+* **`overlapping_searcher_rev`** (`AC_KIND_OVERLAPPING_REV`): all overlapping reverse matches — used by `PrependableEncoder`.
+
+The Double-Array layout gives O(1) state transitions per input byte, making the automaton traversal extremely cache-friendly.
+
+#### Special Purpose Encoders (C)
+
+All four encoders from the Rust implementation are ported to C:
+
+* **`AppendableEncoder`**: Stores one `AppState` per byte appended (`ac_state`, `last_token`, running count), allowing O(1) amortised count queries via the forward AC automaton.
+* **`PrependableEncoder`**: Mirror of `AppendableEncoder` using the reverse AC automaton — supports O(1) amortised queries while prepending.
+* **`IntervalEncoding`**: Precomputes a `last_token`, `tree_id`, `tree_end`, and `tree_depth` array per byte position, enabling typically-O(1) `count(start, end)` queries.
+* **OpenAI-compatible Tokenizer**: PCRE2-based pre-tokenisation (regex splitting identical to tiktoken) feeding into the shared BPE encode/decode logic.
 
 ## Performance
 
@@ -94,98 +129,121 @@ Our benchmarks show significant performance improvements over existing implement
 
 ### Single-Text Tokenization
 
-Internal benchmarks show rs-bpe outperforms existing tokenizers across all text sizes:
+Internal benchmarks show both rs_bpe and c_bpe outperform tiktoken across all text sizes:
 
 
-| Text Size | rs-bpe\_cached vs tiktoken | rs-bpe\_cached vs HuggingFace |
-| ----------- | ---------------------------- | ------------------------------- |
-| Small     | 15.1x faster               | 7.6x faster                   |
-| Medium    | 3.7x faster                | 8.8x faster                   |
-| Large     | 2.2x faster                | 14.0x faster                  |
+| Text Size | rs-bpe vs tiktoken | c\_bpe (C) vs tiktoken |
+| ----------- | -------------------- | ----------------------- |
+| Small     | 3.0× faster        | 2.9× faster           |
+| Medium    | 1.6× faster        | 1.7× faster           |
+| Large     | 2.3× faster        | 4.4× faster           |
 
 _Encoding speed (benchmark.py results):
 
 
-![](assets/20250318_210013_tokenizer_benchmark_results_throughput.svg)
+![Encoding throughput](assets/20260307_tokenizer_benchmark_results_throughput.svg)
 
 _
 
 ```
 SMALL TEXT:
-  tiktoken: 0.000605s
-  tokenizers: 0.000305s
-  rs_bpe_basic: 0.000095s
-  rs_bpe_cached: 0.000040s
+  tiktoken: 0.000102s
+  rs_bpe:   0.000034s
+  c_bpe:    0.000035s
 
 MEDIUM TEXT:
-  tiktoken: 0.000287s
-  tokenizers: 0.000677s
-  rs_bpe_basic: 0.000096s
-  rs_bpe_cached: 0.000077s
+  tiktoken: 0.001735s
+  rs_bpe:   0.001092s
+  c_bpe:    0.001007s
 
 LARGE TEXT:
-  tiktoken: 0.003613s
-  tokenizers: 0.023054s
-  rs_bpe_basic: 0.001438s
-  rs_bpe_cached: 0.001652s
+  tiktoken: 0.068093s
+  rs_bpe:   0.029147s
+  c_bpe:    0.015330s
 ```
 
-The rs-bpe library also provides significantly faster decoding and roundtrip operations:
+Both libraries also provide significantly faster decoding and roundtrip operations:
 
 _Decoding speed:
 
 
-![](assets/20250318_210117_tokenizer_benchmark_results_time.svg)
+![Tokenizer timing comparison](assets/20260307_tokenizer_benchmark_results_time.svg)
 
 _
 
 ```
+SMALL TEXT:
+  tiktoken: 0.000027s
+  rs_bpe:   0.000018s
+  c_bpe:    0.000011s
+
+MEDIUM TEXT:
+  tiktoken: 0.000200s
+  rs_bpe:   0.000105s
+  c_bpe:    0.000076s
+
 LARGE TEXT:
-  tiktoken: 0.000257s
-  tokenizers: 0.003614s
-  rs_bpe_basic: 0.000184s
-  rs_bpe_cached: 0.000158s
+  tiktoken: 0.003799s
+  rs_bpe:   0.002504s
+  c_bpe:    0.001709s
 ```
 
 ### Batch Processing Performance
 
-rs-bpe provides efficient batch processing that scales better with batch size:
+Both rs_bpe and c_bpe outperform tiktoken at every batch size for both encoding and decoding:
 
 
-| Batch Size | Encoding Speedup | Decoding Speedup | Roundtrip Speedup |
-| ------------ | ------------------ | ------------------ | ------------------- |
-| 1          | 5.1x faster      | 2.6x faster      | 1.7x faster       |
-| 10         | 2.8x faster      | 1.6x faster      | 2.1x faster       |
-| 100        | 3.0x faster      | 1.3x faster      | 2.3x faster       |
-| 1000       | 3.1x faster      | 1.8x faster      | 2.5x faster       |
+| Batch Size | rs\_bpe encode | c\_bpe encode | rs\_bpe decode | c\_bpe decode |
+| ------------ | -------------- | ------------- | -------------- | ------------- |
+| 1          | 79× faster   | 35× faster  | 94× faster   | 165× faster |
+| 10         | 43× faster   | 32× faster  | 100× faster  | 92× faster  |
+| 100        | 17× faster   | 5× faster   | 52× faster   | 94× faster  |
+| 1000       | 13× faster   | 22× faster  | 31× faster   | 57× faster  |
 
-_Throughput comparison (tokens per second):
+> rs_bpe has lower per-call overhead at small batch sizes; c_bpe's advantage grows at large batches due to its tighter inner loop and better cache behaviour on long texts.
+
+_Encode speedup vs tiktoken (all sizes):
 
 
-![](assets/20250318_210645_batch_benchmark_results_throughput.svg)
+![Encode speedup vs tiktoken](assets/20260307_tokenizer_benchmark_results_speedup.svg)
 
 _
 
 ```
-BATCH SIZE 1000:
-  tiktoken: 0.032521s, 1,970,002 tokens/sec
-  rs_bpe_standard_batch: 0.010663s, 6,008,200 tokens/sec
+BATCH ENCODE (n=1):
+  tiktoken: 0.000540s
+  rs_bpe:   0.000007s  (79× faster)
+  c_bpe:    0.000016s  (35× faster)
+
+BATCH ENCODE (n=1000):
+  tiktoken: 0.018697s
+  rs_bpe:   0.001386s  (13× faster)
+  c_bpe:    0.000862s  (22× faster)
+
+BATCH DECODE (n=1000):
+  tiktoken: 0.009883s
+  rs_bpe:   0.000324s  (31× faster)
+  c_bpe:    0.000173s  (57× faster)
 ```
 
 ### Worst-Case Performance
 
-While tiktoken shows quadratic growth for certain adversarial inputs, rs-bpe maintains linear scaling even in worst-case scenarios. This is critical for production systems that need consistent performance guarantees.
+While tiktoken shows quadratic growth for certain adversarial inputs, both rs_bpe and c_bpe maintain linear scaling even in worst-case scenarios. This is critical for production systems that need consistent performance guarantees.
 
 ### Key Performance Advantages
 
-1. **Memory Efficiency**: The implementation uses compact data structures and avoids redundant token storage
-2. **Thread Pool Optimization**: Batch processing uses an optimized thread pool with smart worker allocation
-3. **Caching**: The library includes intelligent state caching for repeated operations
-4. **No Correctness Trade-offs**: Unlike some implementations that sacrifice correctness for speed, rs-bpe is both fast and correct
+1. **Memory Efficiency**: Both implementations use compact data structures (tightly-packed token byte arrays, power-of-2 hash tables at ≤50% load) and avoid redundant token storage
+2. **Cache-Friendly Hash Tables**: `PairMap` uses a splitmix64 finaliser for fixed 8-byte keys; `BytesMap` uses FNV-1a — both with linear probing for sequential memory access
+3. **O(1) State Transitions**: Double-Array Aho-Corasick automatons enable single-byte-per-step token matching without backtracking through the vocabulary
+4. **Thread Pool Optimization**: Batch processing (rs_bpe) uses an optimized Rayon thread pool with smart worker allocation
+5. **LTO**: Both implementations compile with full Link-Time Optimisation (Rust LTO / MSVC `/GL`+`/LTCG` / GCC `-flto`)
+6. **No Correctness Trade-offs**: Both implementations are verified to produce token-for-token identical output to tiktoken
 
 All benchmarks were run on standard hardware and results may vary based on your specific environment.
 
 ## Python Usage Examples
+
+> Both `rs_bpe` and `c_bpe` expose an identical Python API. All examples below use `rs_bpe`; substitute `from c_bpe.bpe import openai` in place of `from rs_bpe.bpe import openai` to use the C implementation.
 
 ### Basic Tokenization
 
@@ -212,7 +270,7 @@ print(f"Token count: {token_count}")
 
 ### Efficient Token Limiting
 
-One of the key features of rs-bpe is the ability to efficiently count tokens up to a limit, which is useful when you need to stay within token constraints:
+One of the key features of both implementations is the ability to efficiently count tokens up to a limit, which is useful when you need to stay within token constraints:
 
 ```python
 from rs_bpe.bpe import openai
@@ -236,7 +294,7 @@ else:
 
 ### Batch Processing
 
-rs-bpe excels at batch processing with automatic parallelization, which is perfect for processing large datasets:
+Both rs_bpe and c_bpe excel at batch processing, which is perfect for processing large datasets:
 
 ```python
 from rs_bpe.bpe import openai
@@ -305,7 +363,7 @@ for i, text in enumerate(texts_to_check):
 
 ### Text Chunking
 
-You can use rs-bpe to efficiently chunk text based on token counts:
+Both rs_bpe and c_bpe can be used to efficiently chunk text based on token counts:
 
 ```python
 from rs_bpe.bpe import openai
@@ -365,7 +423,7 @@ for i, chunk in enumerate(chunks):
 
 ### Thread Pool Configuration
 
-For high-volume applications, you can control how rs-bpe manages thread pools:
+For high-volume applications, rs_bpe exposes explicit thread pool controls via `ParallelOptions` (c_bpe batch processing runs single-threaded per call and relies on the caller for parallelism):
 
 ```python
 from rs_bpe.bpe import openai
@@ -404,11 +462,27 @@ result_large = tokenizer.encode_batch(large_batch, high_throughput_options)
 
 ### Building from Source
 
-```
+**rs_bpe (Rust / PyO3)**
+
+```bash
 git clone https://github.com/gweidart/rs-bpe.git
 cd rs-bpe
-cd python
 maturin develop --release
+```
+
+**c_bpe (C extension)**
+
+```bash
+git clone https://github.com/gweidart/rs-bpe.git
+cd rs-bpe/c_bpe
+pip install -e .
+```
+
+Both wheels are also available on PyPI:
+
+```bash
+pip install rs-bpe      # Rust implementation
+pip install c-bpe       # C implementation
 ```
 
 ## License
