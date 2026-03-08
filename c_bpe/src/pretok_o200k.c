@@ -1,6 +1,6 @@
 /* pretok_o200k.c — Hand-coded pretokenizer for o200k_base.
  *
- * Implements the same 3-pattern alternation as the PCRE2 version:
+ * Implements 3-pattern alternation:
  *
  *   Pattern 0 (no lookahead):
  *     [^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?

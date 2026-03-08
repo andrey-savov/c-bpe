@@ -1,7 +1,6 @@
 /* pretok.h — Hand-coded pretokenizer for cl100k and o200k.
  *
- * Replaces the PCRE2 regex-based pretokenizer with direct C code that
- * implements the same pattern matching using PCRE2's UCD tables for
+ * Direct C code implementing pattern matching, using UCD tables for
  * Unicode property classification.
  */
 #ifndef PRETOK_H

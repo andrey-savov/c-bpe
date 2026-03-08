@@ -1,6 +1,6 @@
 /* pretok_cl100k.c — Hand-coded pretokenizer for cl100k_base.
  *
- * Implements the same 3-pattern alternation as the PCRE2 version:
+ * Implements 3-pattern alternation:
  *
  *   Pattern 0 (no lookahead):
  *     (?i:'s|'t|'re|'ve|'m|'ll|'d)

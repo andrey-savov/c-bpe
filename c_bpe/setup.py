@@ -5,7 +5,7 @@ Optimization flags:
   GCC/Clang:  -O3 -march=native -flto -DNDEBUG
   MSVC:       /O2 /Ox /GL /DNDEBUG  (/O3 does not exist in MSVC)
 
-PCRE2 is bundled from third_party/ and compiled statically.
+PCRE2 UCD tables are bundled from third_party/ for Unicode property lookups.
 OpenMP is auto-detected; if unavailable, parallel APIs fall back to sequential.
 codegen/gen_dict.py runs before compilation to produce dict header files.
 """
@@ -72,39 +72,12 @@ def run_codegen():
 
 
 # ---------------------------------------------------------------------------
-# PCRE2 bundled sources
+# PCRE2 UCD tables (Unicode property data only — no regex engine)
 # ---------------------------------------------------------------------------
 
 PCRE2_NEEDED_SOURCES = [
-    "pcre2_auto_possess.c",
-    "pcre2_chartables.c",
-    "pcre2_chkdint.c",
-    "pcre2_compile.c",
-    "pcre2_compile_class.c",
-    "pcre2_config.c",
-    "pcre2_context.c",
-    "pcre2_convert.c",
-    "pcre2_dfa_match.c",
-    "pcre2_error.c",
-    "pcre2_extuni.c",
-    "pcre2_find_bracket.c",
-    "pcre2_jit_compile.c",
-    "pcre2_maketables.c",
-    "pcre2_match.c",
-    "pcre2_match_data.c",
-    "pcre2_newline.c",
-    "pcre2_ord2utf.c",
-    "pcre2_pattern_info.c",
-    "pcre2_script_run.c",
-    "pcre2_serialize.c",
-    "pcre2_string_utils.c",
-    "pcre2_study.c",
-    "pcre2_substitute.c",
-    "pcre2_substring.c",
     "pcre2_tables.c",
     "pcre2_ucd.c",
-    "pcre2_valid_utf.c",
-    "pcre2_xclass.c",
 ]
 
 def get_pcre2_sources():
@@ -116,9 +89,8 @@ def get_pcre2_sources():
             sources.append(str(p))
     if not sources:
         print(
-            "WARNING: PCRE2 bundled sources not found in third_party/pcre2/src/\n"
-            "         Run:  python codegen/fetch_pcre2.py  to download them.\n"
-            "         Pre-tokenization (regex splitting) will be disabled."
+            "WARNING: PCRE2 UCD sources not found in third_party/pcre2/src/\n"
+            "         Run:  python codegen/fetch_pcre2.py  to download them."
         )
     return sources
 
@@ -212,8 +184,6 @@ if PCRE2_SOURCES:
     ]
     INCLUDE_DIRS.append(str(THIRD_PARTY / "pcre2" / "src"))
     INCLUDE_DIRS.append(str(THIRD_PARTY / "pcre2"))
-else:
-    PCRE2_MACROS = [("C_BPE_NO_PCRE2", None)]
 
 ext = Extension(
     name="c_bpe.bpe",

@@ -6,7 +6,7 @@
  *
  * Types exposed:
  *   BytePairEncoding   (raw BPE without pretokenisation)
- *   Tokenizer          (BPE + PCRE2 pretokeniser)
+ *   Tokenizer          (BPE + native pretokeniser)
  *   ParallelOptions
  *
  * The generated dict headers are included here.

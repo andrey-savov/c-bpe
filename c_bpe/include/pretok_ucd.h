@@ -1,7 +1,8 @@
-/* pretok_ucd.h — Unicode property helpers wrapping PCRE2's UCD tables.
+/* pretok_ucd.h — Unicode property helpers using UCD tables.
  *
- * Self-contained header that extracts only the UCD lookup machinery from
- * PCRE2, avoiding the full pcre2_internal.h/pcre2.h include chain.
+ * Self-contained header that provides Unicode category lookups (Letter,
+ * Number, Mark, whitespace) using the UCD stage-1/stage-2 tables from
+ * pcre2_ucd.c / pcre2_tables.c.
  */
 #ifndef PRETOK_UCD_H
 #define PRETOK_UCD_H
