@@ -116,38 +116,15 @@ class BpeBuildExt(build_ext):
             if test_compile(compiler, ["-flto"], "int main(){return 0;}"):
                 opt_flags.append("-flto")
 
-        # ---- OpenMP ----
-        if msvc:
-            omp_flags = ["/openmp"]
-            omp_link = []
-        else:
-            omp_flags = ["-fopenmp"]
-            omp_link = ["-fopenmp"]
-
-        has_omp = test_compile(compiler, omp_flags)
-        if has_omp:
-            print("c_bpe: OpenMP detected — parallel batch APIs enabled.")
-        else:
-            omp_flags = []
-            omp_link = []
-            print(
-                "\n"
-                "c_bpe WARNING: OpenMP not found.\n"
-                "  Parallel batch APIs (encode_batch_parallel / decode_batch_parallel)\n"
-                "  will run sequentially.\n"
-                "  To enable parallelism:\n"
-                "    macOS:  brew install libomp\n"
-                "            and rebuild with:  pip install -e .\n"
-                "    Linux:  sudo apt install libomp-dev  # or equivalent\n"
-                "    Windows: OpenMP ships with MSVC by default.\n"
-            )
+        # ---- Parallel batch APIs use threadpool.c (persistent spin-waiting
+        #      thread pool).  No external library required. ----
 
         # Inject flags into extension
-        ext.extra_compile_args = opt_flags + omp_flags
+        ext.extra_compile_args = opt_flags
         if not msvc:
             ext.extra_compile_args += ["-std=c11", "-Wall", "-Wextra", "-Wno-unused-parameter"]
-        ext.extra_link_args = omp_link
-        if msvc and has_omp:
+        ext.extra_link_args = []
+        if msvc:
             ext.extra_link_args += ["/LTCG"]
 
         super().build_extension(ext)
@@ -168,6 +145,7 @@ BPE_SOURCES = [
     str(SRC / "pretok_cl100k.c"),
     str(SRC / "pretok_o200k.c"),
     str(SRC / "parallel.c"),
+    str(SRC / "threadpool.c"),
     str(SRC / "pymodule.c"),
 ]
 

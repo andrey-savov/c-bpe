@@ -180,6 +180,30 @@ def test_encode_batch_cl100k(benchmark, cl100k, label, batch):
 
 
 # ---------------------------------------------------------------------------
+# Parallel batch encoding benchmarks – cl100k_base
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "label,batch",
+    [
+        pytest.param("small_x100",  _BATCH_SMALL,  id="small_x100"),
+        pytest.param("medium_x10",  _BATCH_MEDIUM, id="medium_x10"),
+        pytest.param("large_x2",    _BATCH_LARGE,  id="large_x2"),
+    ],
+)
+def test_encode_batch_parallel_cl100k(benchmark, cl100k, label, batch):
+    """Benchmark parallel batch encoding for cl100k_base.
+
+    encode_batch_parallel returns (list[list[int]], total_tokens, time_taken, threads_used).
+    """
+    tokens_list, total_tokens, _elapsed, _threads = benchmark(
+        cl100k.encode_batch_parallel, batch, None)
+    assert total_tokens > 0
+    assert len(tokens_list) == len(batch)
+    benchmark.extra_info["tokens"] = total_tokens
+
+
+# ---------------------------------------------------------------------------
 # o200k_base encoding / roundtrip
 # ---------------------------------------------------------------------------
 

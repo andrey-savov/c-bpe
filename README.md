@@ -462,27 +462,101 @@ result_large = tokenizer.encode_batch(large_batch, high_throughput_options)
 
 ### Building from Source
 
-**rs_bpe (Rust / PyO3)**
+Both implementations can be built from source on Linux, macOS, and Windows.
+
+#### Prerequisites
+
+| Requirement | rs_bpe | c_bpe |
+|-------------|--------|-------|
+| Python ≥ 3.8 | ✅ | ✅ |
+| Rust toolchain (stable) | ✅ | — |
+| C11 compiler (GCC, Clang, or MSVC) | — | ✅ |
+| maturin (`pip install maturin`) | ✅ | — |
+| setuptools (`pip install setuptools`) | — | ✅ |
+
+#### rs_bpe (Rust / PyO3)
 
 ```bash
+# Clone the repository
 git clone https://github.com/gweidart/rs-bpe.git
 cd rs-bpe
+
+# Create and activate a virtual environment (recommended)
+python -m venv .venv
+source .venv/bin/activate   # Linux/macOS
+# .venv\Scripts\activate    # Windows
+
+# Install maturin if not already present
+pip install maturin
+
+# Build and install in development mode (debug)
+maturin develop
+
+# Or build an optimised release wheel
 maturin develop --release
 ```
 
-**c_bpe (C extension)**
+The Rust toolchain can be installed from [rustup.rs](https://rustup.rs/).
+
+#### c_bpe (C extension)
 
 ```bash
-git clone https://github.com/gweidart/rs-bpe.git
-cd rs-bpe/c_bpe
+# From the repository root
+cd c_bpe
+
+# Create and activate a virtual environment (recommended)
+python -m venv .venv
+source .venv/bin/activate   # Linux/macOS
+# .venv\Scripts\activate    # Windows
+
+# Install in development mode (editable)
 pip install -e .
+
+# Or build the extension in-place without installing
+python setup.py build_ext --inplace
 ```
 
-Both wheels are also available on PyPI:
+The build auto-detects the compiler and applies platform-appropriate optimisations:
+- **GCC/Clang**: `-O3 -march=native -flto -DNDEBUG`
+- **MSVC**: `/O2 /Ox /GL /DNDEBUG` with `/LTCG` at link time
+
+PCRE2 Unicode tables are bundled in `third_party/`; no external PCRE2 installation is required.
+
+#### Installing both side by side
+
+Both packages can be installed in the same environment — they use separate namespaces (`rs_bpe` and `c_bpe`):
 
 ```bash
-pip install rs-bpe      # Rust implementation
-pip install c-bpe       # C implementation
+cd rs-bpe
+pip install maturin && maturin develop --release   # rs_bpe
+cd c_bpe && pip install -e .                        # c_bpe
+```
+
+Verify:
+
+```python
+from rs_bpe.bpe import openai as rs_openai
+from c_bpe.bpe import openai as c_openai
+
+rs_tok = rs_openai.cl100k_base()
+c_tok  = c_openai.cl100k_base()
+
+text = "Hello, world!"
+assert rs_tok.encode(text) == c_tok.encode(text)
+print("Both implementations installed and producing identical output.")
+```
+
+#### Running tests
+
+```bash
+# From the repository root, with both implementations installed:
+pip install pytest pytest-benchmark
+
+# Correctness tests
+pytest tests/test_basic.py -v
+
+# Benchmarks
+pytest tests/test_benchmarks.py --benchmark-only -v
 ```
 
 ## License

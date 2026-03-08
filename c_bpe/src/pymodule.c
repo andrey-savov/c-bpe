@@ -16,9 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#ifdef _OPENMP
-#  include <omp.h>
-#endif
+
 
 /* Portable monotonic timestamp (seconds) */
 #ifdef _WIN32
@@ -47,6 +45,7 @@ static double monotonic_secs(void) {
 #include "dict_o200k.h"
 
 /* Parallel batch functions from parallel.c */
+extern int  parallel_num_threads(void);
 extern void parallel_encode_batch(const Tokenizer *tok,
                                    const uint8_t **texts, const size_t *text_lens,
                                    size_t n, uint32_t **out_tokens, size_t *out_ns);
@@ -321,12 +320,12 @@ static PyObject *PyTokenizer_encode_batch(PyTokenizer *self, PyObject *args) {
         texts[i] = (const uint8_t*)buf;
     }
 
-    /* Release GIL during computation */
+    /* Sequential encode — matches rs_bpe's encode_batch behaviour */
     double t0 = monotonic_secs();
-    Py_BEGIN_ALLOW_THREADS
-    parallel_encode_batch(self->tok, texts, text_lens, (size_t)nbatch,
-                          out_toks, out_ns);
-    Py_END_ALLOW_THREADS
+    for (Py_ssize_t i = 0; i < nbatch; i++) {
+        out_toks[i] = tokenizer_encode(self->tok, texts[i], text_lens[i],
+                                       &out_ns[i]);
+    }
     double elapsed = monotonic_secs() - t0;
 
     /* Build result */
@@ -382,13 +381,8 @@ static PyObject *PyTokenizer_encode_batch_parallel(PyTokenizer *self, PyObject *
     }
     free(texts); free(text_lens); free(out_toks); free(out_ns);
 
-#ifdef _OPENMP
-    int nthreads = omp_get_max_threads();
-#else
-    int nthreads = 1;
-#endif
     return Py_BuildValue("(Ondl)", result_list, (Py_ssize_t)total, elapsed,
-                         (long)nthreads);
+                         (long)parallel_num_threads());
 }
 
 static PyObject *PyTokenizer_decode(PyTokenizer *self, PyObject *args) {
@@ -516,11 +510,7 @@ static PyObject *py_is_cached_o200k(PyObject *_m, PyObject *_a) {
 }
 
 static PyObject *py_get_num_threads(PyObject *_m, PyObject *_a) {
-#ifdef _OPENMP
-    return PyLong_FromLong(omp_get_max_threads());
-#else
-    return PyLong_FromLong(1);
-#endif
+    return PyLong_FromLong(parallel_num_threads());
 }
 
 static PyMethodDef openai_methods[] = {

@@ -1,79 +1,70 @@
-/* parallel.c — OpenMP-accelerated batch encode / count.
+/* parallel.c — Thin wrapper around the persistent BpePool (threadpool.c).
  *
- * Falls back to sequential processing if OpenMP is unavailable.
- * Activated by passing compile flag -fopenmp / /openmp.
+ * Workers spin on an atomic epoch counter between calls so there is no
+ * OS-scheduler round-trip penalty between consecutive encode_batch calls.
+ * The pool is created once on first use via call_once.
  */
-#include <stdlib.h>
-#include <string.h>
+#include <threads.h>   /* C11: call_once, once_flag, ONCE_FLAG_INIT */
 #include <stddef.h>
-#ifdef _OPENMP
-#  include <omp.h>
-#endif
 #include "tokenizer.h"
+#include "threadpool.h"
 
-/* =========================================================================
- * Batch encode
- * ========================================================================= */
+/* ---- Global pool (lazy init) -------------------------------------------- */
 
-/**
- * Encode `n` texts in parallel.
- *
- * @param tok        tokenizer (thread-safe: read-only after construction)
- * @param texts      array of n UTF-8 byte pointers
- * @param text_lens  array of n lengths
- * @param n          number of texts
- * @param out_tokens outputs[i] is a heap-allocated uint32_t array (caller frees)
- * @param out_ns     out_ns[i]  is the length of outputs[i]
- */
+static BpePool  *g_pool           = NULL;
+static once_flag g_pool_init_flag = ONCE_FLAG_INIT;
+
+static void init_pool(void) { g_pool = bpe_pool_create(0); }
+
+static BpePool *get_pool(void) {
+    call_once(&g_pool_init_flag, init_pool);
+    return g_pool;
+}
+
+/* ---- Public API ---------------------------------------------------------- */
+
+int parallel_num_threads(void) {
+    return bpe_pool_nthreads(get_pool());
+}
+
 void parallel_encode_batch(const Tokenizer *tok,
                             const uint8_t **texts, const size_t *text_lens,
-                            size_t n,
-                            uint32_t **out_tokens, size_t *out_ns) {
-    int i;
-    int ni = (int)n;
-#ifdef _OPENMP
-#pragma omp parallel for schedule(dynamic, 4)
-#endif
-    for (i = 0; i < ni; i++) {
-        out_tokens[i] = tokenizer_encode(tok, texts[i], text_lens[i],
-                                         &out_ns[i]);
+                            size_t n, uint32_t **out_tokens, size_t *out_ns) {
+    BpePool *p = get_pool();
+    if (p) {
+        bpe_pool_encode_batch(p, tok, texts, text_lens, n, out_tokens, out_ns);
+    } else {
+        for (size_t i = 0; i < n; i++)
+            out_tokens[i] = tokenizer_encode(tok, texts[i], text_lens[i],
+                                             &out_ns[i]);
     }
 }
 
-/**
- * Count tokens in `n` texts in parallel.
- *
- * @param out_counts  out_counts[i] = number of tokens in text i
- */
 void parallel_count_batch(const Tokenizer *tok,
                            const uint8_t **texts, const size_t *text_lens,
                            size_t n, size_t *out_counts) {
-    int i;
-    int ni = (int)n;
-#ifdef _OPENMP
-#pragma omp parallel for schedule(dynamic, 4)
-#endif
-    for (i = 0; i < ni; i++) {
-        out_counts[i] = tokenizer_count(tok, texts[i], text_lens[i]);
+    BpePool *p = get_pool();
+    if (p) {
+        bpe_pool_count_batch(p, tok, texts, text_lens, n, out_counts);
+    } else {
+        for (size_t i = 0; i < n; i++)
+            out_counts[i] = tokenizer_count(tok, texts[i], text_lens[i]);
     }
 }
 
-/**
- * Count tokens with limit for `n` texts in parallel.
- * out_counts[i] == SIZE_MAX means limit was exceeded for text i.
- */
 void parallel_count_till_limit_batch(const Tokenizer *tok,
                                       const uint8_t **texts,
                                       const size_t *text_lens,
                                       size_t n, size_t token_limit,
                                       size_t *out_counts) {
-    int i;
-    int ni = (int)n;
-#ifdef _OPENMP
-#pragma omp parallel for schedule(dynamic, 4)
-#endif
-    for (i = 0; i < ni; i++) {
-        out_counts[i] = tokenizer_count_till_limit(tok, texts[i], text_lens[i],
-                                                   token_limit);
+    BpePool *p = get_pool();
+    if (p) {
+        bpe_pool_count_till_limit_batch(p, tok, texts, text_lens, n,
+                                        token_limit, out_counts);
+    } else {
+        for (size_t i = 0; i < n; i++)
+            out_counts[i] = tokenizer_count_till_limit(tok, texts[i],
+                                                       text_lens[i],
+                                                       token_limit);
     }
 }
