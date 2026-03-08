@@ -244,9 +244,14 @@ def test_encode_batch_parallel_cl100k(benchmark, cl100k, label, batch):
     """Benchmark parallel batch encoding for cl100k_base.
 
     encode_batch_parallel returns (list[list[int]], total_tokens, time_taken, threads_used).
+
+    Uses pedantic mode with warmup disabled to avoid crashing the c_bpe C11
+    thread pool on MSVC (rapid-fire warmup iterations trigger an access
+    violation in MSVC's <threads.h> implementation).
     """
-    tokens_list, total_tokens, _elapsed, _threads = benchmark(
-        cl100k.encode_batch_parallel, batch, None)
+    tokens_list, total_tokens, _elapsed, _threads = benchmark.pedantic(
+        cl100k.encode_batch_parallel, args=(batch, None),
+        rounds=5, warmup_rounds=0)
     assert total_tokens > 0
     assert len(tokens_list) == len(batch)
     benchmark.extra_info["tokens"] = total_tokens

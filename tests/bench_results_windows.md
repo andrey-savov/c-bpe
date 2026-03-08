@@ -4,103 +4,109 @@
 
 | Benchmark | tokens | min | mean | median | stddev | IQR | ops/s | ns/token | rounds |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `test_encode_cl100k[small]` | 10 | 1.440 μs | 1.582 μs | 1.490 μs | 684.006 ns | 50.000 ns | 632,051 | 158.2 ns | 69445 |
-| `test_encode_cl100k[medium]` | 5,157 | 742.800 μs | 848.702 μs | 788.600 μs | 164.967 μs | 92.100 μs | 1,178 | 164.6 ns | 1342 |
-| `test_encode_cl100k[large]` | 257,850 | 39.504 ms | 42.201 ms | 41.689 ms | 1.560 ms | 1.455 ms | 24 | 163.7 ns | 26 |
-| `test_decode_cl100k[small]` | 10 | 273.680 ns | 301.688 ns | 284.213 ns | 133.524 ns | 5.269 ns | 3,314,688 | 30.2 ns | 192307 |
-| `test_decode_cl100k[medium]` | 5,157 | 65.800 μs | 72.164 μs | 67.600 μs | 18.493 μs | 3.100 μs | 13,857 | 14.0 ns | 15129 |
-| `test_decode_cl100k[large]` | 257,850 | 3.348 ms | 3.928 ms | 3.837 ms | 371.343 μs | 247.075 μs | 255 | 15.2 ns | 297 |
-| `test_roundtrip_cl100k[small]` | 10 | 1.770 μs | 1.922 μs | 1.820 μs | 538.262 ns | 59.989 ns | 520,180 | 192.2 ns | 56498 |
-| `test_roundtrip_cl100k[medium]` | 5,157 | 800.700 μs | 905.377 μs | 843.600 μs | 167.101 μs | 97.700 μs | 1,105 | 175.6 ns | 1250 |
-| `test_roundtrip_cl100k[large]` | 257,850 | 44.115 ms | 46.857 ms | 46.648 ms | 1.334 ms | 1.607 ms | 21 | 181.7 ns | 23 |
-| `test_count_cl100k[small]` | 10 | 1.200 μs | 1.309 μs | 1.230 μs | 550.623 ns | 10.012 ns | 764,043 | 130.9 ns | 82645 |
-| `test_count_cl100k[medium]` | 5,157 | 672.200 μs | 779.902 μs | 715.600 μs | 182.569 μs | 86.500 μs | 1,282 | 151.2 ns | 1453 |
-| `test_count_cl100k[large]` | 257,850 | 36.566 ms | 38.464 ms | 38.105 ms | 1.570 ms | 1.948 ms | 26 | 149.2 ns | 29 |
-| `test_count_till_limit_cl100k[small]` | 10 | 1.200 μs | 1.314 μs | 1.230 μs | 529.039 ns | 20.000 ns | 760,784 | 131.4 ns | 82645 |
-| `test_count_till_limit_cl100k[medium]` | 50 | 5.300 μs | 5.906 μs | 5.600 μs | 3.297 μs | 200.002 ns | 169,323 | 118.1 ns | 188682 |
-| `test_count_till_limit_cl100k[large]` | 50 | 5.300 μs | 5.885 μs | 5.600 μs | 2.401 μs | 200.002 ns | 169,909 | 117.7 ns | 188682 |
-| `test_encode_batch_cl100k[small_x100]` | 1,000 | 147.100 μs | 160.087 μs | 149.400 μs | 38.401 μs | 3.900 μs | 6,247 | 160.1 ns | 6799 |
-| `test_encode_batch_cl100k[medium_x10]` | 51,570 | 7.404 ms | 8.268 ms | 8.068 ms | 736.872 μs | 789.875 μs | 121 | 160.3 ns | 135 |
-| `test_encode_batch_cl100k[large_x2]` | 515,700 | 80.663 ms | 84.478 ms | 83.095 ms | 3.154 ms | 5.508 ms | 12 | 163.8 ns | 13 |
-| `test_encode_batch_parallel_cl100k[small_x100]` | 1,000 | 1.116 ms | 1.653 ms | 1.616 ms | 239.337 μs | 326.750 μs | 605 | 1653.0 ns | 828 |
-| `test_encode_batch_parallel_cl100k[medium_x10]` | 51,570 | 6.668 ms | 7.543 ms | 7.384 ms | 705.340 μs | 610.325 μs | 133 | 146.3 ns | 151 |
-| `test_encode_batch_parallel_cl100k[large_x2]` | 515,700 | 72.190 ms | 75.250 ms | 74.114 ms | 3.368 ms | 3.842 ms | 13 | 145.9 ns | 15 |
-| `test_decode_o200k[small]` | 10 | 249.000 ns | 277.986 ns | 262.000 ns | 93.091 ns | 12.000 ns | 3,597,301 | 27.8 ns | 40161 |
-| `test_decode_o200k[medium]` | 5,212 | 67.300 μs | 76.694 μs | 69.700 μs | 26.671 μs | 5.200 μs | 13,039 | 14.7 ns | 14859 |
-| `test_decode_o200k[large]` | 260,600 | 3.489 ms | 4.229 ms | 4.003 ms | 576.891 μs | 671.325 μs | 236 | 16.2 ns | 289 |
-| `test_encode_o200k[small]` | 10 | 1.410 μs | 1.833 μs | 1.470 μs | 1.125 μs | 220.002 ns | 545,661 | 183.3 ns | 70923 |
-| `test_encode_o200k[medium]` | 5,212 | 785.500 μs | 936.165 μs | 845.900 μs | 234.546 μs | 119.000 μs | 1,068 | 179.6 ns | 1280 |
-| `test_encode_o200k[large]` | 260,600 | 43.490 ms | 47.403 ms | 47.029 ms | 2.040 ms | 2.262 ms | 21 | 181.9 ns | 23 |
-| `test_roundtrip_o200k[small]` | 10 | 1.680 μs | 2.146 μs | 1.750 μs | 1.216 μs | 250.002 ns | 465,917 | 214.6 ns | 59524 |
-| `test_roundtrip_o200k[medium]` | 5,212 | 867.100 μs | 1.054 ms | 946.700 μs | 262.353 μs | 193.925 μs | 949 | 202.2 ns | 1167 |
-| `test_roundtrip_o200k[large]` | 260,600 | 52.191 ms | 59.132 ms | 56.336 ms | 8.350 ms | 8.317 ms | 17 | 226.9 ns | 21 |
+| `test_import_cl100k` | n/a | 314.600 μs | 840.831 μs | 647.200 μs | 440.909 μs | 732.925 μs | 1,189 | n/a | 3197 |
+| `test_import_o200k` | n/a | 348.500 μs | 845.114 μs | 703.300 μs | 406.878 μs | 709.800 μs | 1,183 | n/a | 2976 |
+| `test_encode_cl100k[small]` | 10 | 1.300 μs | 3.183 μs | 3.470 μs | 2.101 μs | 2.750 μs | 314,179 | 318.3 ns | 76924 |
+| `test_encode_cl100k[medium]` | 5,157 | 628.300 μs | 1.250 ms | 912.100 μs | 592.555 μs | 1.014 ms | 800 | 242.3 ns | 1313 |
+| `test_encode_cl100k[large]` | 257,850 | 39.926 ms | 58.111 ms | 54.403 ms | 13.531 ms | 17.329 ms | 17 | 225.4 ns | 24 |
+| `test_decode_cl100k[small]` | 10 | 243.000 ns | 639.913 ns | 785.000 ns | 304.566 ns | 586.000 ns | 1,562,712 | 64.0 ns | 41153 |
+| `test_decode_cl100k[medium]` | 5,157 | 80.700 μs | 143.732 μs | 89.100 μs | 87.552 μs | 134.700 μs | 6,957 | 27.9 ns | 12361 |
+| `test_decode_cl100k[large]` | 257,850 | 4.185 ms | 7.790 ms | 7.565 ms | 2.513 ms | 4.738 ms | 128 | 30.2 ns | 242 |
+| `test_roundtrip_cl100k[small]` | 10 | 1.540 μs | 3.358 μs | 2.270 μs | 2.218 μs | 3.160 μs | 297,776 | 335.8 ns | 54054 |
+| `test_roundtrip_cl100k[medium]` | 5,157 | 704.000 μs | 1.381 ms | 961.500 μs | 657.967 μs | 1.161 ms | 724 | 267.8 ns | 1438 |
+| `test_roundtrip_cl100k[large]` | 257,850 | 46.287 ms | 68.681 ms | 64.798 ms | 13.731 ms | 25.170 ms | 15 | 266.4 ns | 21 |
+| `test_count_cl100k[small]` | 10 | 1.020 μs | 2.053 μs | 1.280 μs | 1.475 μs | 1.920 μs | 487,011 | 205.3 ns | 98040 |
+| `test_count_cl100k[medium]` | 5,157 | 693.700 μs | 1.244 ms | 958.600 μs | 576.843 μs | 1.109 ms | 804 | 241.2 ns | 1439 |
+| `test_count_cl100k[large]` | 257,850 | 42.365 ms | 72.738 ms | 74.493 ms | 12.268 ms | 16.723 ms | 14 | 282.1 ns | 27 |
+| `test_count_till_limit_cl100k[small]` | 10 | 1.150 μs | 2.214 μs | 1.330 μs | 1.598 μs | 2.080 μs | 451,581 | 221.4 ns | 86957 |
+| `test_count_till_limit_cl100k[medium]` | 50 | 4.600 μs | 12.076 μs | 7.800 μs | 10.660 μs | 11.700 μs | 82,811 | 241.5 ns | 172416 |
+| `test_count_till_limit_cl100k[large]` | 50 | 5.850 μs | 12.465 μs | 12.050 μs | 8.529 μs | 10.650 μs | 80,227 | 249.3 ns | 85471 |
+| `test_encode_batch_cl100k[small_x100]` | 1,000 | 135.100 μs | 278.417 μs | 181.700 μs | 152.316 μs | 255.800 μs | 3,592 | 278.4 ns | 6614 |
+| `test_encode_batch_cl100k[medium_x10]` | 51,570 | 7.858 ms | 15.213 ms | 15.015 ms | 5.038 ms | 9.532 ms | 66 | 295.0 ns | 148 |
+| `test_encode_batch_cl100k[large_x2]` | 515,700 | 96.249 ms | 146.003 ms | 153.256 ms | 30.145 ms | 42.657 ms | 7 | 283.1 ns | 12 |
+| `test_encode_batch_parallel_cl100k[small_x100]` | 1,000 | 2.763 ms | 4.236 ms | 3.392 ms | 2.417 ms | 1.808 ms | 236 | 4236.2 ns | 5 |
+| `test_encode_batch_parallel_cl100k[medium_x10]` | 51,570 | 12.595 ms | 17.499 ms | 15.194 ms | 5.274 ms | 9.906 ms | 57 | 339.3 ns | 5 |
+| `test_encode_batch_parallel_cl100k[large_x2]` | 515,700 | 148.607 ms | 157.941 ms | 156.137 ms | 9.957 ms | 15.801 ms | 6 | 306.3 ns | 5 |
+| `test_decode_o200k[small]` | 10 | 274.995 ns | 661.863 ns | 524.997 ns | 777.807 ns | 581.247 ns | 1,510,887 | 66.2 ns | 192311 |
+| `test_decode_o200k[medium]` | 5,212 | 65.200 μs | 155.094 μs | 107.300 μs | 80.798 μs | 140.000 μs | 6,448 | 29.8 ns | 12020 |
+| `test_decode_o200k[large]` | 260,600 | 3.561 ms | 7.295 ms | 6.791 ms | 2.758 ms | 4.773 ms | 137 | 28.0 ns | 234 |
+| `test_encode_o200k[small]` | 10 | 1.320 μs | 2.825 μs | 1.760 μs | 1.900 μs | 2.680 μs | 354,001 | 282.5 ns | 62894 |
+| `test_encode_o200k[medium]` | 5,212 | 817.800 μs | 1.473 ms | 1.138 ms | 677.984 μs | 1.332 ms | 679 | 282.6 ns | 1220 |
+| `test_encode_o200k[large]` | 260,600 | 57.613 ms | 85.686 ms | 87.893 ms | 13.800 ms | 12.974 ms | 12 | 328.8 ns | 22 |
+| `test_roundtrip_o200k[small]` | 10 | 1.590 μs | 3.941 μs | 3.340 μs | 2.283 μs | 3.520 μs | 253,746 | 394.1 ns | 51021 |
+| `test_roundtrip_o200k[medium]` | 5,212 | 725.500 μs | 1.027 ms | 823.750 μs | 517.713 μs | 270.550 μs | 973 | 197.1 ns | 1364 |
+| `test_roundtrip_o200k[large]` | 260,600 | 39.277 ms | 45.841 ms | 43.772 ms | 5.282 ms | 8.685 ms | 22 | 175.9 ns | 26 |
 
 ## c_bpe
 
 | Benchmark | tokens | min | mean | median | stddev | IQR | ops/s | ns/token | rounds |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `test_encode_cl100k[small]` | 10 | 709.994 ns | 803.940 ns | 760.006 ns | 307.093 ns | 29.989 ns | 1,243,873 | 80.4 ns | 140847 |
-| `test_encode_cl100k[medium]` | 5,160 | 382.800 μs | 460.533 μs | 415.300 μs | 123.903 μs | 61.725 μs | 2,171 | 89.3 ns | 2599 |
-| `test_encode_cl100k[large]` | 258,000 | 20.579 ms | 23.399 ms | 23.237 ms | 1.535 ms | 1.828 ms | 43 | 90.7 ns | 49 |
-| `test_decode_cl100k[small]` | 10 | 158.000 ns | 173.485 ns | 165.999 ns | 46.970 ns | 4.000 ns | 5,764,194 | 17.3 ns | 62500 |
-| `test_decode_cl100k[medium]` | 5,160 | 47.900 μs | 52.506 μs | 49.200 μs | 13.500 μs | 2.700 μs | 19,045 | 10.2 ns | 20877 |
-| `test_decode_cl100k[large]` | 258,000 | 2.425 ms | 2.822 ms | 2.764 ms | 325.938 μs | 122.500 μs | 354 | 10.9 ns | 410 |
-| `test_roundtrip_cl100k[small]` | 10 | 929.995 ns | 1.076 μs | 999.996 ns | 432.249 ns | 39.989 ns | 929,239 | 107.6 ns | 107527 |
-| `test_roundtrip_cl100k[medium]` | 5,160 | 444.400 μs | 515.991 μs | 469.900 μs | 132.595 μs | 44.100 μs | 1,938 | 100.0 ns | 2248 |
-| `test_roundtrip_cl100k[large]` | 258,000 | 24.228 ms | 26.745 ms | 26.066 ms | 2.106 ms | 2.257 ms | 37 | 103.7 ns | 42 |
-| `test_count_cl100k[small]` | 10 | 579.993 ns | 667.349 ns | 610.005 ns | 302.966 ns | 10.012 ns | 1,498,466 | 66.7 ns | 169494 |
-| `test_count_cl100k[medium]` | 5,160 | 329.600 μs | 396.240 μs | 351.900 μs | 118.711 μs | 47.075 μs | 2,524 | 76.8 ns | 3043 |
-| `test_count_cl100k[large]` | 258,000 | 16.836 ms | 19.604 ms | 19.325 ms | 1.449 ms | 2.140 ms | 51 | 76.0 ns | 59 |
-| `test_count_till_limit_cl100k[small]` | 10 | 1.230 μs | 1.475 μs | 1.280 μs | 711.012 ns | 50.000 ns | 678,051 | 147.5 ns | 80646 |
-| `test_count_till_limit_cl100k[medium]` | 50 | 4.650 μs | 5.704 μs | 5.000 μs | 3.112 μs | 300.060 ns | 175,307 | 114.1 ns | 107528 |
-| `test_count_till_limit_cl100k[large]` | 50 | 4.750 μs | 5.651 μs | 5.100 μs | 2.448 μs | 350.061 ns | 176,957 | 113.0 ns | 106384 |
-| `test_encode_batch_cl100k[small_x100]` | 1,000 | 67.000 μs | 75.128 μs | 69.300 μs | 19.160 μs | 4.400 μs | 13,311 | 75.1 ns | 15528 |
-| `test_encode_batch_cl100k[medium_x10]` | 51,600 | 4.007 ms | 4.619 ms | 4.483 ms | 574.787 μs | 701.100 μs | 217 | 89.5 ns | 250 |
-| `test_encode_batch_cl100k[large_x2]` | 516,000 | 41.687 ms | 46.382 ms | 46.233 ms | 2.659 ms | 3.553 ms | 22 | 89.9 ns | 24 |
-| `test_encode_batch_parallel_cl100k[small_x100]` | 1,000 | 127.600 μs | 576.530 μs | 592.400 μs | 133.640 μs | 168.950 μs | 1,735 | 576.5 ns | 6641 |
-| `test_encode_batch_parallel_cl100k[medium_x10]` | 51,600 | 1.104 ms | 1.531 ms | 1.484 ms | 212.159 μs | 240.150 μs | 653 | 29.7 ns | 937 |
-| `test_encode_batch_parallel_cl100k[large_x2]` | 516,000 | 24.848 ms | 27.009 ms | 26.603 ms | 1.740 ms | 2.370 ms | 37 | 52.3 ns | 40 |
-| `test_decode_o200k[small]` | 10 | 138.000 ns | 156.675 ns | 144.000 ns | 81.876 ns | 5.000 ns | 6,382,637 | 15.7 ns | 71943 |
-| `test_decode_o200k[medium]` | 5,215 | 48.600 μs | 54.162 μs | 51.300 μs | 12.894 μs | 3.700 μs | 18,463 | 10.4 ns | 20492 |
-| `test_decode_o200k[large]` | 260,750 | 2.477 ms | 2.883 ms | 2.839 ms | 264.562 μs | 151.300 μs | 347 | 11.1 ns | 403 |
-| `test_encode_o200k[small]` | 10 | 729.994 ns | 832.137 ns | 780.006 ns | 313.719 ns | 30.000 ns | 1,201,725 | 83.2 ns | 135137 |
-| `test_encode_o200k[medium]` | 5,215 | 441.900 μs | 523.822 μs | 481.700 μs | 109.032 μs | 72.400 μs | 1,909 | 100.4 ns | 2273 |
-| `test_encode_o200k[large]` | 260,750 | 24.436 ms | 27.563 ms | 27.360 ms | 1.933 ms | 2.752 ms | 36 | 105.7 ns | 41 |
-| `test_roundtrip_o200k[small]` | 10 | 909.995 ns | 1.038 μs | 970.007 ns | 426.025 ns | 40.000 ns | 963,550 | 103.8 ns | 108697 |
-| `test_roundtrip_o200k[medium]` | 5,215 | 507.000 μs | 594.940 μs | 548.150 μs | 124.172 μs | 76.900 μs | 1,681 | 114.1 ns | 1966 |
-| `test_roundtrip_o200k[large]` | 260,750 | 26.997 ms | 30.373 ms | 30.810 ms | 1.587 ms | 2.459 ms | 33 | 116.5 ns | 38 |
+| `test_import_cl100k` | n/a | 304.300 μs | 659.866 μs | 485.600 μs | 346.547 μs | 484.600 μs | 1,515 | n/a | 3348 |
+| `test_import_o200k` | n/a | 318.700 μs | 761.325 μs | 603.300 μs | 372.333 μs | 634.550 μs | 1,314 | n/a | 3180 |
+| `test_encode_cl100k[small]` | 10 | 689.994 ns | 1.638 μs | 1.080 μs | 1.206 μs | 1.590 μs | 610,613 | 163.8 ns | 104166 |
+| `test_encode_cl100k[medium]` | 5,160 | 477.500 μs | 1.133 ms | 1.311 ms | 448.707 μs | 836.575 μs | 883 | 219.5 ns | 2605 |
+| `test_encode_cl100k[large]` | 258,000 | 25.270 ms | 42.249 ms | 40.568 ms | 12.234 ms | 16.102 ms | 24 | 163.8 ns | 47 |
+| `test_decode_cl100k[small]` | 10 | 143.000 ns | 288.065 ns | 190.000 ns | 232.174 ns | 306.000 ns | 3,471,436 | 28.8 ns | 53764 |
+| `test_decode_cl100k[medium]` | 5,160 | 46.000 μs | 100.403 μs | 68.500 μs | 55.703 μs | 79.200 μs | 9,960 | 19.5 ns | 21740 |
+| `test_decode_cl100k[large]` | 258,000 | 2.600 ms | 5.212 ms | 4.183 ms | 2.103 ms | 3.859 ms | 192 | 20.2 ns | 318 |
+| `test_roundtrip_cl100k[small]` | 10 | 1.220 μs | 2.605 μs | 2.580 μs | 1.641 μs | 2.310 μs | 383,902 | 260.5 ns | 82645 |
+| `test_roundtrip_cl100k[medium]` | 5,160 | 443.500 μs | 1.094 ms | 958.200 μs | 501.240 μs | 904.100 μs | 914 | 212.0 ns | 2309 |
+| `test_roundtrip_cl100k[large]` | 258,000 | 30.576 ms | 59.648 ms | 58.706 ms | 13.580 ms | 20.069 ms | 17 | 231.2 ns | 33 |
+| `test_count_cl100k[small]` | 10 | 770.006 ns | 1.702 μs | 2.090 μs | 1.341 μs | 1.400 μs | 587,712 | 170.2 ns | 128207 |
+| `test_count_cl100k[medium]` | 5,160 | 417.100 μs | 806.427 μs | 642.500 μs | 387.987 μs | 692.775 μs | 1,240 | 156.3 ns | 2415 |
+| `test_count_cl100k[large]` | 258,000 | 22.366 ms | 34.796 ms | 31.591 ms | 9.230 ms | 12.295 ms | 29 | 134.9 ns | 37 |
+| `test_count_till_limit_cl100k[small]` | 10 | 1.160 μs | 2.234 μs | 1.480 μs | 1.561 μs | 1.820 μs | 447,645 | 223.4 ns | 86208 |
+| `test_count_till_limit_cl100k[medium]` | 50 | 4.300 μs | 10.066 μs | 6.450 μs | 7.409 μs | 9.700 μs | 99,347 | 201.3 ns | 116279 |
+| `test_count_till_limit_cl100k[large]` | 50 | 5.700 μs | 10.645 μs | 6.500 μs | 11.379 μs | 9.900 μs | 93,943 | 212.9 ns | 114944 |
+| `test_encode_batch_cl100k[small_x100]` | 1,000 | 64.400 μs | 150.412 μs | 95.500 μs | 84.551 μs | 145.800 μs | 6,648 | 150.4 ns | 15175 |
+| `test_encode_batch_cl100k[medium_x10]` | 51,600 | 3.842 ms | 7.311 ms | 6.424 ms | 2.587 ms | 3.243 ms | 137 | 141.7 ns | 251 |
+| `test_encode_batch_cl100k[large_x2]` | 516,000 | 86.397 ms | 113.448 ms | 114.165 ms | 15.301 ms | 18.363 ms | 9 | 219.9 ns | 16 |
+| `test_encode_batch_parallel_cl100k[small_x100]` | 1,000 | 230.200 μs | 487.140 μs | 328.500 μs | 423.477 μs | 369.950 μs | 2,053 | 487.1 ns | 5 |
+| `test_encode_batch_parallel_cl100k[medium_x10]` | 51,600 | 1.347 ms | 2.201 ms | 2.125 ms | 625.528 μs | 717.475 μs | 454 | 42.7 ns | 5 |
+| `test_encode_batch_parallel_cl100k[large_x2]` | 516,000 | 38.859 ms | 56.836 ms | 60.198 ms | 12.716 ms | 19.723 ms | 18 | 110.1 ns | 5 |
+| `test_decode_o200k[small]` | 10 | 154.000 ns | 171.030 ns | 157.000 ns | 89.851 ns | 1.001 ns | 5,846,937 | 17.1 ns | 63695 |
+| `test_decode_o200k[medium]` | 5,215 | 46.500 μs | 53.423 μs | 48.100 μs | 21.059 μs | 2.400 μs | 18,718 | 10.2 ns | 21414 |
+| `test_decode_o200k[large]` | 260,750 | 2.507 ms | 2.953 ms | 2.842 ms | 384.456 μs | 296.000 μs | 339 | 11.3 ns | 409 |
+| `test_encode_o200k[small]` | 10 | 679.994 ns | 808.041 ns | 750.006 ns | 503.565 ns | 50.000 ns | 1,237,562 | 80.8 ns | 144929 |
+| `test_encode_o200k[medium]` | 5,215 | 421.600 μs | 508.371 μs | 450.400 μs | 176.694 μs | 57.750 μs | 1,967 | 97.5 ns | 2359 |
+| `test_encode_o200k[large]` | 260,750 | 23.079 ms | 27.548 ms | 26.649 ms | 3.425 ms | 4.979 ms | 36 | 105.6 ns | 42 |
+| `test_roundtrip_o200k[small]` | 10 | 849.995 ns | 1.073 μs | 969.996 ns | 693.819 ns | 100.001 ns | 932,106 | 107.3 ns | 116279 |
+| `test_roundtrip_o200k[medium]` | 5,215 | 476.600 μs | 563.538 μs | 499.300 μs | 212.785 μs | 32.750 μs | 1,775 | 108.1 ns | 2097 |
+| `test_roundtrip_o200k[large]` | 260,750 | 25.650 ms | 29.834 ms | 29.877 ms | 2.506 ms | 3.131 ms | 34 | 114.4 ns | 40 |
 
 ## Comparison (median, rs_bpe vs c_bpe)
 
 | Benchmark | rs_bpe | c_bpe | ratio |
 | --- | --- | --- | --- |
-| `test_count_cl100k[large]` | 38.105 ms | 19.325 ms | 1.97× |
-| `test_count_cl100k[medium]` | 715.600 μs | 351.900 μs | 2.03× |
-| `test_count_cl100k[small]` | 1.230 μs | 610.005 ns | 2.02× |
-| `test_count_till_limit_cl100k[large]` | 5.600 μs | 5.100 μs | 1.10× |
-| `test_count_till_limit_cl100k[medium]` | 5.600 μs | 5.000 μs | 1.12× |
-| `test_count_till_limit_cl100k[small]` | 1.230 μs | 1.280 μs | **0.96×** |
-| `test_decode_cl100k[large]` | 3.837 ms | 2.764 ms | 1.39× |
-| `test_decode_cl100k[medium]` | 67.600 μs | 49.200 μs | 1.37× |
-| `test_decode_cl100k[small]` | 284.213 ns | 165.999 ns | 1.71× |
-| `test_decode_o200k[large]` | 4.003 ms | 2.839 ms | 1.41× |
-| `test_decode_o200k[medium]` | 69.700 μs | 51.300 μs | 1.36× |
-| `test_decode_o200k[small]` | 262.000 ns | 144.000 ns | 1.82× |
-| `test_encode_batch_cl100k[large_x2]` | 83.095 ms | 46.233 ms | 1.80× |
-| `test_encode_batch_cl100k[medium_x10]` | 8.068 ms | 4.483 ms | 1.80× |
-| `test_encode_batch_cl100k[small_x100]` | 149.400 μs | 69.300 μs | 2.16× |
-| `test_encode_batch_parallel_cl100k[large_x2]` | 74.114 ms | 26.603 ms | 2.79× |
-| `test_encode_batch_parallel_cl100k[medium_x10]` | 7.384 ms | 1.484 ms | 4.98× |
-| `test_encode_batch_parallel_cl100k[small_x100]` | 1.616 ms | 592.400 μs | 2.73× |
-| `test_encode_cl100k[large]` | 41.689 ms | 23.237 ms | 1.79× |
-| `test_encode_cl100k[medium]` | 788.600 μs | 415.300 μs | 1.90× |
-| `test_encode_cl100k[small]` | 1.490 μs | 760.006 ns | 1.96× |
-| `test_encode_o200k[large]` | 47.029 ms | 27.360 ms | 1.72× |
-| `test_encode_o200k[medium]` | 845.900 μs | 481.700 μs | 1.76× |
-| `test_encode_o200k[small]` | 1.470 μs | 780.006 ns | 1.88× |
-| `test_roundtrip_cl100k[large]` | 46.648 ms | 26.066 ms | 1.79× |
-| `test_roundtrip_cl100k[medium]` | 843.600 μs | 469.900 μs | 1.80× |
-| `test_roundtrip_cl100k[small]` | 1.820 μs | 999.996 ns | 1.82× |
-| `test_roundtrip_o200k[large]` | 56.336 ms | 30.810 ms | 1.83× |
-| `test_roundtrip_o200k[medium]` | 946.700 μs | 548.150 μs | 1.73× |
-| `test_roundtrip_o200k[small]` | 1.750 μs | 970.007 ns | 1.80× |
+| `test_count_cl100k[large]` | 74.493 ms | 31.591 ms | 2.36× |
+| `test_count_cl100k[medium]` | 958.600 μs | 642.500 μs | 1.49× |
+| `test_count_cl100k[small]` | 1.280 μs | 2.090 μs | **0.61×** |
+| `test_count_till_limit_cl100k[large]` | 12.050 μs | 6.500 μs | 1.85× |
+| `test_count_till_limit_cl100k[medium]` | 7.800 μs | 6.450 μs | 1.21× |
+| `test_count_till_limit_cl100k[small]` | 1.330 μs | 1.480 μs | **0.90×** |
+| `test_decode_cl100k[large]` | 7.565 ms | 4.183 ms | 1.81× |
+| `test_decode_cl100k[medium]` | 89.100 μs | 68.500 μs | 1.30× |
+| `test_decode_cl100k[small]` | 785.000 ns | 190.000 ns | 4.13× |
+| `test_decode_o200k[large]` | 6.791 ms | 2.842 ms | 2.39× |
+| `test_decode_o200k[medium]` | 107.300 μs | 48.100 μs | 2.23× |
+| `test_decode_o200k[small]` | 524.997 ns | 157.000 ns | 3.34× |
+| `test_encode_batch_cl100k[large_x2]` | 153.256 ms | 114.165 ms | 1.34× |
+| `test_encode_batch_cl100k[medium_x10]` | 15.015 ms | 6.424 ms | 2.34× |
+| `test_encode_batch_cl100k[small_x100]` | 181.700 μs | 95.500 μs | 1.90× |
+| `test_encode_batch_parallel_cl100k[large_x2]` | 156.137 ms | 60.198 ms | 2.59× |
+| `test_encode_batch_parallel_cl100k[medium_x10]` | 15.194 ms | 2.125 ms | 7.15× |
+| `test_encode_batch_parallel_cl100k[small_x100]` | 3.392 ms | 328.500 μs | 10.33× |
+| `test_encode_cl100k[large]` | 54.403 ms | 40.568 ms | 1.34× |
+| `test_encode_cl100k[medium]` | 912.100 μs | 1.311 ms | **0.70×** |
+| `test_encode_cl100k[small]` | 3.470 μs | 1.080 μs | 3.21× |
+| `test_encode_o200k[large]` | 87.893 ms | 26.649 ms | 3.30× |
+| `test_encode_o200k[medium]` | 1.138 ms | 450.400 μs | 2.53× |
+| `test_encode_o200k[small]` | 1.760 μs | 750.006 ns | 2.35× |
+| `test_import_cl100k` | 647.200 μs | 485.600 μs | 1.33× |
+| `test_import_o200k` | 703.300 μs | 603.300 μs | 1.17× |
+| `test_roundtrip_cl100k[large]` | 64.798 ms | 58.706 ms | 1.10× |
+| `test_roundtrip_cl100k[medium]` | 961.500 μs | 958.200 μs | 1.00× |
+| `test_roundtrip_cl100k[small]` | 2.270 μs | 2.580 μs | **0.88×** |
+| `test_roundtrip_o200k[large]` | 43.772 ms | 29.877 ms | 1.47× |
+| `test_roundtrip_o200k[medium]` | 823.750 μs | 499.300 μs | 1.65× |
+| `test_roundtrip_o200k[small]` | 3.340 μs | 969.996 ns | 3.44× |

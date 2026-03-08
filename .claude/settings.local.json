@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(source .venv/Scripts/activate)",
+      "Bash(pytest tests/test_benchmarks.py --benchmark-only -k \"test_import\" -v)",
+      "Bash(pytest tests/test_benchmarks.py --benchmark-only -k \"test_encode_cl100k\" -v)",
+      "Bash(pytest tests/test_benchmarks.py --benchmark-only -k \"batch\" -v)",
+      "Bash(pytest tests/test_benchmarks.py --benchmark-only -v)",
+      "Bash(pytest tests/test_benchmarks.py --benchmark-only -k \"encode_batch_parallel_cl100k\" -v)",
+      "Bash(pytest tests/test_benchmarks.py --benchmark-only -k \"encode_batch_parallel_cl100k and c_bpe\" -v)"
+    ]
+  }
+}
