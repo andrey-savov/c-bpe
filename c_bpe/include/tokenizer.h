@@ -44,6 +44,16 @@ uint32_t *tokenizer_encode(const Tokenizer *tok,
                            const uint8_t *text, size_t text_len,
                            size_t *out_n);
 
+/**
+ * Encode into caller-provided reusable buffers.
+ * *buf / *buf_cap may be reallocated.  scratch is reused across calls.
+ * Returns the number of tokens written into *buf.
+ */
+size_t tokenizer_encode_into(const Tokenizer *tok,
+                             const uint8_t *text, size_t text_len,
+                             BpeEncScratch *scratch,
+                             uint32_t **buf, size_t *buf_cap);
+
 size_t    tokenizer_count(const Tokenizer *tok,
                           const uint8_t *text, size_t text_len);
 

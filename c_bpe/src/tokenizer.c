@@ -120,6 +120,42 @@ uint32_t *tokenizer_encode(const Tokenizer *tok,
     return result;
 }
 
+size_t tokenizer_encode_into(const Tokenizer *tok,
+                             const uint8_t *text, size_t text_len,
+                             BpeEncScratch *scratch,
+                             uint32_t **buf, size_t *buf_cap) {
+    if (!tok->native_pre) {
+        /* Fallback: allocate fresh and copy into caller buffer */
+        size_t n;
+        uint32_t *tmp = bpe_encode_via_backtracking(tok->bpe, text, text_len, &n);
+        if (n > *buf_cap) {
+            while (n > *buf_cap) *buf_cap *= 2;
+            *buf = (uint32_t *)realloc(*buf, *buf_cap * sizeof(uint32_t));
+        }
+        memcpy(*buf, tmp, n * sizeof(uint32_t));
+        free(tmp);
+        return n;
+    }
+
+    size_t count = 0;
+    PretokIter it = pretok_iter_new_for(tok, text, text_len);
+    size_t ps, pe;
+    while (pretok_iter_next(&it, &ps, &pe)) {
+        if (pe <= ps) continue;
+        size_t   piece_n;
+        const uint32_t *piece = bpe_encode_piece(tok->bpe, text + ps,
+                                                  pe - ps, scratch, &piece_n);
+        if (count + piece_n > *buf_cap) {
+            while (count + piece_n > *buf_cap) *buf_cap *= 2;
+            *buf = (uint32_t *)realloc(*buf, *buf_cap * sizeof(uint32_t));
+        }
+        memcpy(*buf + count, piece, piece_n * sizeof(uint32_t));
+        count += piece_n;
+    }
+    pretok_iter_free(&it);
+    return count;
+}
+
 size_t tokenizer_count(const Tokenizer *tok,
                        const uint8_t *text, size_t text_len) {
     if (!tok->native_pre) return bpe_count(tok->bpe, text, text_len);

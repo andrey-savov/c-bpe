@@ -365,43 +365,47 @@ static PyObject *PyTokenizer_encode_batch(PyTokenizer *self, PyObject *args) {
     PyObject *lst;
     if (!PyArg_ParseTuple(args, "O!", &PyList_Type, &lst)) return NULL;
 
-    Py_ssize_t   nbatch = PyList_GET_SIZE(lst);
-    const uint8_t **texts     = (const uint8_t **)malloc((size_t)nbatch * sizeof(void*));
-    size_t        *text_lens  = (size_t *)malloc((size_t)nbatch * sizeof(size_t));
-    uint32_t     **out_toks   = (uint32_t **)calloc((size_t)nbatch, sizeof(void*));
-    size_t        *out_ns     = (size_t *)calloc((size_t)nbatch, sizeof(size_t));
+    Py_ssize_t nbatch = PyList_GET_SIZE(lst);
 
-    /* Resolve Python str objects to UTF-8 buffers (borrow; valid for GIL hold) */
+    /* Extract text pointers (cheap — PyUnicode caches UTF-8) */
+    const uint8_t **texts    = (const uint8_t **)malloc((size_t)nbatch * sizeof(void *));
+    size_t         *text_lens = (size_t *)malloc((size_t)nbatch * sizeof(size_t));
     for (Py_ssize_t i = 0; i < nbatch; i++) {
         PyObject *item = PyList_GET_ITEM(lst, i);
-        const char *buf = PyUnicode_AsUTF8AndSize(item, (Py_ssize_t*)&text_lens[i]);
+        const char *buf = PyUnicode_AsUTF8AndSize(item, (Py_ssize_t *)&text_lens[i]);
         if (!buf) {
-            free(texts); free(text_lens); free(out_toks); free(out_ns);
+            free(texts); free(text_lens);
             return NULL;
         }
-        texts[i] = (const uint8_t*)buf;
+        texts[i] = (const uint8_t *)buf;
     }
 
-    /* Sequential encode — matches rs_bpe's encode_batch behaviour */
+    /* Phase 1: encode all items — no Python allocations, cache-friendly */
+    uint32_t **all_toks = (uint32_t **)malloc((size_t)nbatch * sizeof(uint32_t *));
+    size_t    *all_ns   = (size_t *)malloc((size_t)nbatch * sizeof(size_t));
+    size_t total = 0;
+
     double t0 = monotonic_secs();
     for (Py_ssize_t i = 0; i < nbatch; i++) {
-        out_toks[i] = tokenizer_encode(self->tok, texts[i], text_lens[i],
-                                       &out_ns[i]);
+        all_toks[i] = tokenizer_encode(self->tok, texts[i], text_lens[i],
+                                       &all_ns[i]);
+        total += all_ns[i];
     }
     double elapsed = monotonic_secs() - t0;
 
-    /* Build result */
-    PyObject *result_list = PyList_New(nbatch);
-    size_t total = 0;
-    for (Py_ssize_t i = 0; i < nbatch; i++) {
-        PyObject *sub = tokens_to_pylist(out_toks[i], out_ns[i]);
-        free(out_toks[i]);
-        total += out_ns[i];
-        PyList_SET_ITEM(result_list, i, sub);
-    }
-    free(texts); free(text_lens); free(out_toks); free(out_ns);
+    free(texts);
+    free(text_lens);
 
-    return Py_BuildValue("(Ond)", result_list, (Py_ssize_t)total, elapsed);
+    /* Phase 2: build Python lists from raw results */
+    PyObject *result_list = PyList_New(nbatch);
+    for (Py_ssize_t i = 0; i < nbatch; i++) {
+        PyList_SET_ITEM(result_list, i, tokens_to_pylist(all_toks[i], all_ns[i]));
+        free(all_toks[i]);
+    }
+    free(all_toks);
+    free(all_ns);
+
+    return Py_BuildValue("(Nnd)", result_list, (Py_ssize_t)total, elapsed);
 }
 
 static PyObject *PyTokenizer_encode_batch_parallel(PyTokenizer *self, PyObject *args) {
