@@ -1,23 +1,16 @@
-name: CI & Release
+name: Release
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
     inputs:
       version_tag:
         description: 'Version tag to release (e.g., v1.0.0)'
-        required: false
+        required: true
         type: string
-
-env:
-  PYTHON_DEFAULT: "3.13"
 
 jobs:
   # ============================================================
-  # Test: C implementation (primary)
+  # Test before release
   # ============================================================
   test-c:
     name: Test C on ${{ matrix.os }} / Python ${{ matrix.python-version }}
@@ -29,6 +22,8 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.version_tag }}
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -43,46 +38,12 @@ jobs:
         run: |
           pip install pytest
           pytest tests/test_basic.py -v
-        continue-on-error: true
 
   # ============================================================
-  # Test: Rust implementation (companion)
-  # ============================================================
-  test-rust:
-    name: Test Rust on ${{ matrix.os }} / Python ${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Build and install rs_bpe
-        run: |
-          python -m venv .venv
-          source .venv/bin/activate
-          pip install --upgrade pip maturin
-          cd rust && maturin develop --release
-        shell: bash
-      - name: Test Rust imports
-        run: |
-          source .venv/bin/activate
-          python -c "from rs_bpe.bpe import openai; t = openai.cl100k_base(); print('rs_bpe OK:', t.encode('hello'))"
-        shell: bash
-
-  # ============================================================
-  # Release: Build C wheels
+  # Build C wheels
   # ============================================================
   build-c-wheels:
     name: Build C wheels (${{ matrix.os }} / ${{ matrix.python-version }})
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag != ''
     needs: [test-c]
     runs-on: ${{ matrix.os }}
     strategy:
@@ -126,11 +87,10 @@ jobs:
           path: dist/*.whl
 
   # ============================================================
-  # Release: Build C sdist
+  # Build C sdist
   # ============================================================
   build-c-sdist:
     name: Build C source distribution
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag != ''
     needs: [test-c]
     runs-on: ubuntu-latest
     steps:
@@ -169,7 +129,7 @@ jobs:
           path: dist/*.tar.gz
 
   # ============================================================
-  # Publish: c-bpe to TestPyPI (manual dispatch)
+  # Publish c-bpe to TestPyPI
   # ============================================================
   publish-c-testpypi:
     name: Publish c-bpe to TestPyPI
@@ -178,7 +138,6 @@ jobs:
     environment: testpypi
     permissions:
       id-token: write
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag != ''
     steps:
       - name: Download C wheel artifacts
         uses: actions/download-artifact@v4
@@ -208,7 +167,7 @@ jobs:
           skip-existing: true
 
   # ============================================================
-  # Publish: c-bpe to PyPI (manual dispatch)
+  # Publish c-bpe to PyPI
   # ============================================================
   publish-c-pypi:
     name: Publish c-bpe to PyPI
@@ -217,7 +176,6 @@ jobs:
     environment: pypi
     permissions:
       id-token: write
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag != ''
     steps:
       - name: Download C wheel artifacts
         uses: actions/download-artifact@v4
@@ -246,7 +204,7 @@ jobs:
           skip-existing: false
 
   # ============================================================
-  # GitHub Release (manual dispatch)
+  # GitHub Release
   # ============================================================
   github-release:
     name: Create GitHub Release
@@ -254,7 +212,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag != ''
     steps:
       - uses: actions/checkout@v4
         with:

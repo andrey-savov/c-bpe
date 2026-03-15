@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ============================================================
+  # Test: C implementation (primary)
+  # ============================================================
+  test-c:
+    name: Test C on ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Build and install c_bpe
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e .
+      - name: Test imports
+        run: python tests/test_import.py
+      - name: Run tests
+        run: |
+          pip install pytest
+          pytest tests/test_basic.py -v
+        continue-on-error: true
+
+  # ============================================================
+  # Test: Rust implementation (companion)
+  # ============================================================
+  test-rust:
+    name: Test Rust on ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build and install rs_bpe
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip maturin
+          cd rust && maturin develop --release
+        shell: bash
+      - name: Test Rust imports
+        run: |
+          source .venv/bin/activate
+          python -c "from rs_bpe.bpe import openai; t = openai.cl100k_base(); print('rs_bpe OK:', t.encode('hello'))"
+        shell: bash
