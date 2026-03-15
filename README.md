@@ -1,4 +1,4 @@
-[![Build](https://github.com/andrey-savov/c-bpe/actions/workflows/workflow.yml/badge.svg?branch=main)](https://github.com/andrey-savov/c-bpe/actions/workflows/workflow.yml)
+[![CI](https://github.com/andrey-savov/c-bpe/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/andrey-savov/c-bpe/actions/workflows/ci.yml)
 
 # c-bpe
 
@@ -347,7 +347,7 @@ for i, chunk in enumerate(chunks):
 
 | Requirement | c_bpe | rs_bpe (companion) |
 |-------------|-------|---------------------|
-| Python ≥ 3.8 | ✅ | ✅ |
+| Python ≥ 3.9 | ✅ | ✅ |
 | C11 compiler (GCC, Clang, or MSVC) | ✅ | — |
 | Rust toolchain (stable) | — | ✅ |
 | setuptools (`pip install setuptools`) | ✅ | — |
