@@ -13,6 +13,12 @@
  */
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+
+/* Py_NewRef was added in Python 3.10 */
+#if PY_VERSION_HEX < 0x030a00a1
+static inline PyObject *_Py_NewRef(PyObject *o) { Py_INCREF(o); return o; }
+#define Py_NewRef(o) _Py_NewRef((PyObject *)(o))
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>

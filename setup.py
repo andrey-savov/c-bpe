@@ -134,7 +134,10 @@ class BpeBuildExt(build_ext):
         if msvc:
             opt_flags = ["/O2", "/Ox", "/GL", "/DNDEBUG", "/fp:fast", "/std:c11", "/experimental:c11atomics"]
         else:
-            opt_flags = ["-O3", "-march=native", "-DNDEBUG", "-ffast-math"]
+            opt_flags = ["-O3", "-DNDEBUG", "-ffast-math"]
+            # -march=native may fail on cross-arch CI (e.g. Apple Silicon clang targeting x86)
+            if test_compile(compiler, ["-march=native"], "int main(){return 0;}"):
+                opt_flags.append("-march=native")
             # Try LTO
             if test_compile(compiler, ["-flto"], "int main(){return 0;}"):
                 opt_flags.append("-flto")
