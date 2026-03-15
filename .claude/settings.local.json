@@ -19,7 +19,10 @@
       "Bash(python -c \"from c_bpe.bpe import openai; t = openai.cl100k_base\\(\\); print\\(''encode:'', t.encode\\(''Hello world''\\)\\); print\\(''count:'', t.count\\(''Hello world''\\)\\)\")",
       "Bash(python tests/test_import.py)",
       "Bash(python -m pytest tests/test_basic.py -v)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(gh run:*)",
+      "Bash(echo \"No files with #include <threads.h> found\")",
+      "Bash(gh api:*)"
     ]
   }
 }
