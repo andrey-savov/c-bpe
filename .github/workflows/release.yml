@@ -201,28 +201,3 @@ jobs:
           verbose: true
           skip-existing: false
 
-  # ============================================================
-  # Upload assets to GitHub Release
-  # ============================================================
-  upload-release-assets:
-    name: Upload release assets
-    needs: [publish-c-pypi]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: c-wheels-*
-          path: artifacts
-          merge-multiple: true
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: c-sdist
-          path: artifacts
-
-      - name: Upload assets to release
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" artifacts/* --clobber
