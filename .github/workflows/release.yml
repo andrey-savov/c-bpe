@@ -71,7 +71,7 @@ jobs:
           python scripts/sync_version.py --set ${{ steps.extract_version.outputs.version }} || true
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.23
+        uses: pypa/cibuildwheel@v3.4.0
         env:
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
           CIBW_SKIP: "*-musllinux_* *-manylinux_i686"
