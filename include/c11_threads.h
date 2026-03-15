@@ -10,6 +10,7 @@
 #if defined(__APPLE__)
 
 #include <pthread.h>
+#include <stdlib.h>
 
 /* ---- Return codes ---- */
 enum { thrd_success = 0, thrd_error = 1 };

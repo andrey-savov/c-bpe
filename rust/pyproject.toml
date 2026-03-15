@@ -50,6 +50,7 @@ Documentation = "https://github.com/andrey-savov/c-bpe#readme"
 "Bug Tracker" = "https://github.com/andrey-savov/c-bpe/issues"
 
 [tool.maturin]
+manifest-path = "Cargo.toml"
 profile = "release"
 bindings = "pyo3"
 features = ["pyo3/extension-module"]
