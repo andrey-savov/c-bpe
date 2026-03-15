@@ -1,23 +1,42 @@
 [build-system]
-requires = ["maturin>=1.8,<2.0"]
-build-backend = "maturin"
-
-# Alternative build system using setuptools_scm (comment out the above and uncomment below to use)
-# [build-system]
-# requires = ["maturin>=1.8,<2.0", "setuptools>=61.0.0", "wheel", "setuptools_scm[toml]>=6.0"]
-# build-backend = "maturin"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta:__legacy__"
 
 [project]
-name = "rs_bpe"
+name = "c-bpe"
+version = "0.1.0"
+description = "High-performance C implementation of BPE tokenizer"
 requires-python = ">=3.8"
+license = {text = "MIT"}
+readme = "README.md"
+authors = [
+    {name = "andrey-savov"}
+]
+keywords = [
+    "byte-pair-encoding",
+    "tokenization",
+    "tokenizer",
+    "bpe",
+    "tiktoken",
+    "tiktoken-alternative",
+    "tiktoken-compatible",
+    "nlp",
+    "natural-language-processing",
+    "llm",
+    "large-language-models",
+    "openai",
+    "text-processing",
+    "high-performance",
+    "c",
+    "cpython-extension",
+]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: C",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -25,141 +44,31 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Programming Language :: Rust",
+    "Topic :: Text Processing",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Topic :: Text Processing :: Linguistic",
-    "Typing :: Typed",
-]
-dynamic = ["version"]
-description = "A ridiculously fast Python BPE (Byte Pair Encoder) implementation written in Rust"
-authors = [
-    {name = "gweidart", email = "gweidart@gmail.com"}
-]
-readme = "README.md"
-license = {text = "MIT"}
-keywords = [
-    "byte-pair-encoding",
-    "subword-tokenization",
-    "subword-units",
-    "tokenization",
-    "tokenizer",
-    "vocabulary",
-    "vocab",
-    "text-encoding",
-    "text-processing",
-    "string-encoding",
-    "rust",
-    "rust-extension",
-    "cpython-extension",
-    "python-library",
-    "python-package",
-    "pypi",
-    "cross-platform",
-    "fast",
-    "performance",
-    "high-performance",
-    "efficient",
-    "optimized",
-    "speed",
-    "blazing-fast",
-    "rapid",
-    "accelerated",
-    "nlp",
-    "natural-language-processing",
-    "machine-learning",
-    "deep-learning",
-    "artificial-intelligence",
-    "ai",
-    "llm",
-    "large-language-models",
-    "transformers",
-    "generative-ai",
-    "text-generation",
-    "embeddings",
-    "data-science",
-    "research",
-    "linguistics",
-    "openai",
-    "tiktoken",
-    "tiktoken-alternative",
-    "tiktoken-compatible",
-    "huggingface",
-    "huggingface-tokenizers",
-    "tokenizers-library",
-    "developers",
-    "scientists",
-    "researchers",
-    "data-scientists",
-    "machine-learning-engineers",
-    "nlp-engineers",
-    "production-ready",
-    "stable",
-    "library",
-    "package",
-    "tool",
-    "sentencepiece",
-    "wordpiece",
-    "unigram",
-    "bpe-dropout",
-    "backtracking",
 ]
 
-# Optional setuptools_scm configuration for Git-based versioning
-# Uncomment to use Git tags for versioning instead of Cargo.toml
-# [tool.setuptools_scm]
-# write_to = "python/rs_bpe/_version.py"
-# version_scheme = "no-guess-dev"
-# local_scheme = "node-and-date"
-# fallback_version = "0.1.0"
-
-# URLs for the project
 [project.urls]
-Homepage = "https://github.com/gweidart/rs-bpe"
-Repository = "https://github.com/gweidart/rs-bpe"
-Documentation = "https://github.com/gweidart/rs-bpe#readme"
-"Bug Tracker" = "https://github.com/gweidart/rs-bpe/issues"
+Homepage = "https://github.com/andrey-savov/c-bpe"
+Repository = "https://github.com/andrey-savov/c-bpe"
+Documentation = "https://github.com/andrey-savov/c-bpe#readme"
+"Bug Tracker" = "https://github.com/andrey-savov/c-bpe/issues"
 
-[tool.maturin]
-profile = "release"
-bindings = "pyo3"
-# Python extension module features
-features = ["pyo3/extension-module"]
-# Name of the module to be built
-module-name = "rs_bpe.bpe"
-# Location of Python source directory
-python-source = "python"
-# Include type hint files and marker for distribution
-include = ["python/rs_bpe/py.typed", "python/rs_bpe/*.pyi"]
-# Strip debug symbols from the library to reduce size
-strip = true
-# Additional files to include with the source distribution
-sdist-include = ["LICENSE", "README.md"]
-# Optimize for python 3.8+ compatibility (abi3)
-# This allows a single wheel to be compatible with multiple Python versions
-python-packages = ["rs_bpe"]
-# Whether to build universal2 wheels for macOS (both x86_64 and arm64)
-universal2 = true
-
-[tool.maturin.target.x86_64-apple-darwin]
-# macOS deployment target SDK version
-macos-deployment-target = "13.0"
-
-# Configure linters and type checkers
-[tool.mypy]
-python_version = "3.13"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-
-[tool.ruff.isort]
-known-first-party = ["rs_bpe"]
-
-[tool.pyright]
-include = ["python"]
-typeCheckingMode = "basic"
-reportMissingImports = true
-reportMissingTypeStubs = false
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-benchmark>=5.2.3",
+    "mypy>=1.15.0",
+    "ruff>=0.11.0",
+]
+bench = [
+    "numpy>=2.2.4",
+    "matplotlib>=3.10.1",
+    "tiktoken>=0.9.0",
+]
+rust = [
+    "maturin>=1.8.3",
+]
 
 [tool.pytest.ini_options]
 addopts = [
@@ -170,24 +79,24 @@ addopts = [
     "--benchmark-timer=time.perf_counter",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "maturin>=1.8.3",
-    "tomli>=2.2.1",
-    "mypy>=1.15.0",
-    "ruff>=0.11.0",
-    "pytest>=8.3.5",
-    "pytest-benchmark>=5.2.3",
-]
+[tool.setuptools.packages.find]
+where = ["python"]
 
-benchmark = [
-    "numpy>=2.2.4",
-    "matplotlib>=3.10.1",
-    "scikit-learn>=1.6.1",
-    "tiktoken>=0.9.0",
-    "tokenizers>=0.21.0",
-]
+[tool.setuptools.package-data]
+c_bpe = ["*.bin", "*.bin.gz"]
 
-test = [
-    "pytest>=8.3.5",
-]
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.ruff.isort]
+known-first-party = ["c_bpe"]
+
+[tool.pyright]
+include = ["python"]
+typeCheckingMode = "basic"
+reportMissingImports = true
+reportMissingTypeStubs = false

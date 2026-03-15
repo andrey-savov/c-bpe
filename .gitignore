@@ -38,9 +38,12 @@ __pycache__
 *.dylib
 
 # Precomputed BPE blobs (copied/decompressed at build/runtime from data/*.bin.gz)
-c_bpe/python/c_bpe/*.bin
-c_bpe/python/c_bpe/*.bin.gz
-c_bpe/src/precomputed_*
+python/c_bpe/*.bin
+python/c_bpe/*.bin.gz
+src/precomputed_*
+
+# Rust build artifacts (companion implementation)
+rust/target/
 
 # Python build artifacts
 __pycache__/

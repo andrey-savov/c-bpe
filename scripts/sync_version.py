@@ -318,13 +318,13 @@ def main() -> None:
     
     parser.add_argument(
         "--cargo",
-        default="Cargo.toml",
-        help="Path to Cargo.toml file (default: Cargo.toml)"
+        default="rust/Cargo.toml",
+        help="Path to Cargo.toml file (default: rust/Cargo.toml)"
     )
     parser.add_argument(
         "--init",
-        default="python/rs_bpe/__init__.py",
-        help="Path to Python __init__.py file (default: python/rs_bpe/__init__.py)"
+        default="python/c_bpe/__init__.py",
+        help="Path to Python __init__.py file (default: python/c_bpe/__init__.py)"
     )
     
     args = parser.parse_args()

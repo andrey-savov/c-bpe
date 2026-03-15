@@ -158,8 +158,8 @@ def pytest_sessionfinish(session, exitstatus):  # noqa: ANN001
 
     sections: list[str] = ["# Benchmark Results", ""]
 
-    # Per-implementation tables (rs_bpe first, then c_bpe, then others)
-    order = ["rs_bpe", "c_bpe"] + sorted(k for k in by_impl if k not in ("rs_bpe", "c_bpe"))
+    # Per-implementation tables (c_bpe first, then rs_bpe, then others)
+    order = ["c_bpe", "rs_bpe"] + sorted(k for k in by_impl if k not in ("rs_bpe", "c_bpe"))
     for impl in order:
         if impl not in by_impl:
             continue

@@ -18,7 +18,7 @@
     "reportAttributeAccessIssue": false,
     "pythonVersion": "3.13",
     "pythonPlatform": "Linux",
-    "stubPath": "python/rs_bpe",
+    "stubPath": "python/c_bpe",
     "extraPaths": [
         "python"
     ],
@@ -39,9 +39,9 @@
         "reportAttributeAccessIssue": {
             "level": "none",
             "moduleIncludes": [
-                "rs_bpe",
-                "rs_bpe.bpe",
-                "rs_bpe.bpe.openai"
+                "c_bpe",
+                "c_bpe.bpe",
+                "c_bpe.bpe.openai"
             ]
         }
     }

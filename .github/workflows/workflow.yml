@@ -1,0 +1,429 @@
+name: CI & Release
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Version tag to release (e.g., v1.0.0)'
+        required: false
+        type: string
+
+env:
+  PYTHON_DEFAULT: "3.13"
+
+jobs:
+  # ============================================================
+  # Test: C implementation (primary)
+  # ============================================================
+  test-c:
+    name: Test C on ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Build and install c_bpe
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e .
+      - name: Test imports
+        run: python tests/test_import.py
+      - name: Run tests
+        run: |
+          pip install pytest
+          pytest tests/test_basic.py -v
+        continue-on-error: true
+
+  # ============================================================
+  # Test: Rust implementation (companion)
+  # ============================================================
+  test-rust:
+    name: Test Rust on ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build and install rs_bpe
+        run: |
+          python -m pip install --upgrade pip
+          pip install maturin
+          cd rust && maturin develop --release
+        shell: bash
+      - name: Test Rust imports
+        run: |
+          python -c "from rs_bpe.bpe import openai; t = openai.cl100k_base(); print('rs_bpe OK:', t.encode('hello'))"
+        shell: bash
+
+  # ============================================================
+  # Release: Build C wheels
+  # ============================================================
+  build-c-wheels:
+    name: Build C wheels (${{ matrix.os }} / ${{ matrix.python-version }})
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag != '')
+    needs: [test-c]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag || '' }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Extract version from tag
+        id: extract_version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            REF_NAME="${{ github.event.inputs.version_tag }}"
+          else
+            REF_NAME="${{ github.ref_name }}"
+          fi
+          VERSION=$(echo $REF_NAME | sed 's/^v//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version
+        shell: bash
+        run: |
+          python -m pip install tomli
+          python scripts/sync_version.py --set ${{ steps.extract_version.outputs.version }} || true
+
+      - name: Build wheel
+        run: |
+          python -m pip install --upgrade pip setuptools wheel build
+          python -m build --wheel
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: c-wheel-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: dist/*.whl
+
+  # ============================================================
+  # Release: Build C sdist
+  # ============================================================
+  build-c-sdist:
+    name: Build C source distribution
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag != '')
+    needs: [test-c]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag || '' }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Extract version from tag
+        id: extract_version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            REF_NAME="${{ github.event.inputs.version_tag }}"
+          else
+            REF_NAME="${{ github.ref_name }}"
+          fi
+          VERSION=$(echo $REF_NAME | sed 's/^v//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version
+        shell: bash
+        run: |
+          python -m pip install tomli
+          python scripts/sync_version.py --set ${{ steps.extract_version.outputs.version }} || true
+
+      - name: Build sdist
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --sdist
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: c-sdist
+          path: dist/*.tar.gz
+
+  # ============================================================
+  # Release: Build Rust wheels (companion)
+  # ============================================================
+  build-rust-wheels:
+    name: Build Rust wheels (${{ matrix.os }} / ${{ matrix.target }})
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag != '')
+    needs: [test-rust]
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, macos]
+        target: [x86_64, aarch64]
+        exclude:
+          - os: macos
+            target: x86_64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag || '' }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Extract version from tag
+        id: extract_version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            REF_NAME="${{ github.event.inputs.version_tag }}"
+          else
+            REF_NAME="${{ github.ref_name }}"
+          fi
+          VERSION=$(echo $REF_NAME | sed 's/^v//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version
+        shell: bash
+        run: |
+          python -m pip install tomli
+          python scripts/sync_version.py --set ${{ steps.extract_version.outputs.version }} || true
+
+      - name: Build Rust wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: auto
+          args: --release --out dist --interpreter 3.10 3.11 3.12 3.13
+          rust-toolchain: stable
+          working-directory: rust
+
+      - name: Upload Rust wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-wheel-${{ matrix.os }}-${{ matrix.target }}
+          path: rust/dist/*.whl
+
+  # ============================================================
+  # Publish: C package to TestPyPI (manual dispatch)
+  # ============================================================
+  publish-c-testpypi:
+    name: Publish c-bpe to TestPyPI
+    needs: [build-c-wheels, build-c-sdist]
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag != ''
+    steps:
+      - name: Download C wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: c-wheel-*
+          path: dist
+          merge-multiple: true
+
+      - name: Download C sdist
+        uses: actions/download-artifact@v4
+        with:
+          name: c-sdist
+          path: dist
+
+      - name: List files to publish
+        run: |
+          ls -la dist/
+          echo "Wheel count: $(find dist/ -name '*.whl' | wc -l)"
+          echo "Sdist count: $(find dist/ -name '*.tar.gz' | wc -l)"
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/
+          verbose: true
+          skip-existing: true
+
+  # ============================================================
+  # Publish: C package to PyPI (tag push)
+  # ============================================================
+  publish-c-pypi:
+    name: Publish c-bpe to PyPI
+    needs: [build-c-wheels, build-c-sdist]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download C wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: c-wheel-*
+          path: dist
+          merge-multiple: true
+
+      - name: Download C sdist
+        uses: actions/download-artifact@v4
+        with:
+          name: c-sdist
+          path: dist
+
+      - name: List files to publish
+        run: |
+          ls -la dist/
+          echo "Wheel count: $(find dist/ -name '*.whl' | wc -l)"
+          echo "Sdist count: $(find dist/ -name '*.tar.gz' | wc -l)"
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          verbose: true
+          skip-existing: false
+
+  # ============================================================
+  # Publish: Rust package to TestPyPI (manual dispatch)
+  # ============================================================
+  publish-rust-testpypi:
+    name: Publish rs-bpe to TestPyPI
+    needs: [build-rust-wheels]
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag != ''
+    steps:
+      - name: Download Rust wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: rust-wheel-*
+          path: dist
+          merge-multiple: true
+
+      - name: List files to publish
+        run: |
+          ls -la dist/
+          echo "Wheel count: $(find dist/ -name '*.whl' | wc -l)"
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/
+          verbose: true
+          skip-existing: true
+
+  # ============================================================
+  # Publish: Rust package to PyPI (tag push)
+  # ============================================================
+  publish-rust-pypi:
+    name: Publish rs-bpe to PyPI
+    needs: [build-rust-wheels]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download Rust wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: rust-wheel-*
+          path: dist
+          merge-multiple: true
+
+      - name: List files to publish
+        run: |
+          ls -la dist/
+          echo "Wheel count: $(find dist/ -name '*.whl' | wc -l)"
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          verbose: true
+          skip-existing: true
+
+  # ============================================================
+  # GitHub Release
+  # ============================================================
+  github-release:
+    name: Create GitHub Release
+    needs: [build-c-wheels, build-c-sdist]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag != '')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: extract_info
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            REF_NAME="${{ github.event.inputs.version_tag }}"
+          else
+            REF_NAME="${{ github.ref_name }}"
+          fi
+          VERSION=$(echo $REF_NAME | sed 's/^v//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=${REF_NAME}" >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: c-wheel-*
+          path: artifacts
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: c-sdist
+          path: artifacts
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "c-bpe ${{ steps.extract_info.outputs.version }}"
+          files: artifacts/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag || github.ref_name }}

@@ -7,7 +7,19 @@
       "Bash(pytest tests/test_benchmarks.py --benchmark-only -k \"batch\" -v)",
       "Bash(pytest tests/test_benchmarks.py --benchmark-only -v)",
       "Bash(pytest tests/test_benchmarks.py --benchmark-only -k \"encode_batch_parallel_cl100k\" -v)",
-      "Bash(pytest tests/test_benchmarks.py --benchmark-only -k \"encode_batch_parallel_cl100k and c_bpe\" -v)"
+      "Bash(pytest tests/test_benchmarks.py --benchmark-only -k \"encode_batch_parallel_cl100k and c_bpe\" -v)",
+      "Bash(find /c/Users/savov/source/forks/rs-bpe -maxdepth 2 -type f \\\\\\(-name README* -o -name Cargo.toml -o -name CMakeLists.txt \\\\\\))",
+      "Bash(grep -E \"\\\\.\\(rs|py|toml\\)$\")",
+      "Bash(find /c/Users/savov/source/forks/rs-bpe -maxdepth 2 -type d -not -path */.venv* -not -path */.git* -not -path */target* -not -path */__pycache__* -not -path */.pytest_cache*)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(git mv:*)",
+      "Bash(git rm:*)",
+      "Bash(uv pip:*)",
+      "Bash(python -c \"from c_bpe.bpe import openai; t = openai.cl100k_base\\(\\); print\\(''encode:'', t.encode\\(''Hello, world!''\\)\\); print\\(''count:'', t.count\\(''Hello, world!''\\)\\); print\\(''decode:'', t.decode\\(t.encode\\(''Hello, world!''\\)\\)\\)\")",
+      "Bash(python -c \"from c_bpe.bpe import openai; t = openai.cl100k_base\\(\\); print\\(''encode:'', t.encode\\(''Hello world''\\)\\); print\\(''count:'', t.count\\(''Hello world''\\)\\)\")",
+      "Bash(python tests/test_import.py)",
+      "Bash(python -m pytest tests/test_basic.py -v)",
+      "Bash(git add:*)"
     ]
   }
 }

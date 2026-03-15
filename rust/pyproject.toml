@@ -1,0 +1,100 @@
+[build-system]
+requires = ["maturin>=1.8,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "rs_bpe"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+    "Typing :: Typed",
+]
+dynamic = ["version"]
+description = "A ridiculously fast Python BPE (Byte Pair Encoder) implementation written in Rust"
+authors = [
+    {name = "gweidart", email = "gweidart@gmail.com"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+keywords = [
+    "byte-pair-encoding",
+    "tokenization",
+    "tokenizer",
+    "bpe",
+    "tiktoken",
+    "rust",
+    "nlp",
+    "llm",
+]
+
+[project.urls]
+Homepage = "https://github.com/andrey-savov/c-bpe"
+Repository = "https://github.com/andrey-savov/c-bpe"
+Documentation = "https://github.com/andrey-savov/c-bpe#readme"
+"Bug Tracker" = "https://github.com/andrey-savov/c-bpe/issues"
+
+[tool.maturin]
+profile = "release"
+bindings = "pyo3"
+features = ["pyo3/extension-module"]
+module-name = "rs_bpe.bpe"
+python-source = "python"
+include = ["python/rs_bpe/py.typed", "python/rs_bpe/*.pyi"]
+strip = true
+sdist-include = ["LICENSE", "README.md"]
+python-packages = ["rs_bpe"]
+universal2 = true
+
+[tool.maturin.target.x86_64-apple-darwin]
+macos-deployment-target = "13.0"
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.ruff.isort]
+known-first-party = ["rs_bpe"]
+
+[tool.pyright]
+include = ["python"]
+typeCheckingMode = "basic"
+reportMissingImports = true
+reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+addopts = [
+    "--benchmark-sort=mean",
+    "--benchmark-columns=min,mean,stddev,median,iqr,ops,rounds",
+    "--benchmark-warmup=on",
+    "--benchmark-min-rounds=5",
+    "--benchmark-timer=time.perf_counter",
+]
+
+[project.optional-dependencies]
+dev = [
+    "maturin>=1.8.3",
+    "tomli>=2.2.1",
+    "mypy>=1.15.0",
+    "ruff>=0.11.0",
+    "pytest>=8.3.5",
+    "pytest-benchmark>=5.2.3",
+]

@@ -92,7 +92,7 @@ _BATCH_LARGE  = [LARGE_TEXT]  * 2
 # Tokenizer fixtures — parametrized over both implementations
 # ---------------------------------------------------------------------------
 
-@pytest.fixture(scope="module", params=["rs_bpe", "c_bpe"])
+@pytest.fixture(scope="module", params=["c_bpe", "rs_bpe"])
 def cl100k(request):
     """cl100k_base tokenizer — runs once for rs_bpe and once for c_bpe."""
     if request.param == "rs_bpe":
@@ -109,7 +109,7 @@ def cl100k(request):
             pytest.skip("c_bpe not installed")
 
 
-@pytest.fixture(scope="module", params=["rs_bpe", "c_bpe"])
+@pytest.fixture(scope="module", params=["c_bpe", "rs_bpe"])
 def o200k(request):
     """o200k_base tokenizer — runs once for rs_bpe and once for c_bpe."""
     if request.param == "rs_bpe":

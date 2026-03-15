@@ -1,10 +1,11 @@
 include LICENSE
 include README.md
 include pyproject.toml
-include Cargo.toml
-include Cargo.lock
-include python/rs_bpe/*.pyi
-include python/rs_bpe/py.typed
-recursive-include src *.rs
+include setup.py
+recursive-include src *.c *.h
+recursive-include include *.h
+recursive-include third_party *.c *.h
+recursive-include data *.gz
+recursive-include codegen *.py
 recursive-include python *.py *.pyi py.typed
-recursive-include tests *.py 
+recursive-include tests *.py
