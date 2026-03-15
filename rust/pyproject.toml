@@ -30,7 +30,7 @@ description = "A ridiculously fast Python BPE (Byte Pair Encoder) implementation
 authors = [
     {name = "gweidart", email = "gweidart@gmail.com"}
 ]
-readme = "README.md"
+readme = "../README.md"
 license = {text = "MIT"}
 keywords = [
     "byte-pair-encoding",
