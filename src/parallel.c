@@ -4,7 +4,7 @@
  * OS-scheduler round-trip penalty between consecutive encode_batch calls.
  * The pool is created once on first use via call_once.
  */
-#include <threads.h>   /* C11: call_once, once_flag, ONCE_FLAG_INIT */
+#include "c11_threads.h"  /* C11 threads (pthread shim on macOS) */
 #include <stddef.h>
 #include "tokenizer.h"
 #include "threadpool.h"

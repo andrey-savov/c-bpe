@@ -28,7 +28,7 @@ static int hw_concurrency(void) {
 
 #include "threadpool.h"
 #include "tokenizer.h"
-#include <threads.h>      /* C11: thrd_create, mtx_t, cnd_t */
+#include "c11_threads.h"  /* C11 threads (pthread shim on macOS) */
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>

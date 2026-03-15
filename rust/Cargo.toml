@@ -1,0 +1,29 @@
+[package]
+name = "python-bpe"
+version = "0.1.0"
+edition = "2021"
+authors = ["gweidart <gweidart@gmail.com>"]
+description = "Fast Python bindings for the RS-BPE (Byte Pair Encoding) implementation written in Rust"
+repository = "https://github.com/andrey-savov/c-bpe"
+license = "MIT"
+readme = "README.md"
+keywords = ["bpe", "tokenizer", "nlp", "openai", "embeddings"]
+categories = ["text-processing", "api-bindings"]
+
+[lib]
+name = "bpe"
+crate-type = ["cdylib"]
+
+[dependencies]
+bpe = { version = "0.1.0", path = "./bpe" }
+bpe-openai = { version = "0.1.0", path = "./bpe-openai" }
+pyo3 = "0.24.0"
+once_cell = "1.19.0"
+rayon = "1.8.0"
+num_cpus = "1.16.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+strip = true
