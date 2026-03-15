@@ -6,7 +6,7 @@ authors = ["gweidart <gweidart@gmail.com>"]
 description = "Fast Python bindings for the RS-BPE (Byte Pair Encoding) implementation written in Rust"
 repository = "https://github.com/andrey-savov/c-bpe"
 license = "MIT"
-readme = "README.md"
+readme = "../README.md"
 keywords = ["bpe", "tokenizer", "nlp", "openai", "embeddings"]
 categories = ["text-processing", "api-bindings"]
 
